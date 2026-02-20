@@ -1,0 +1,18 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Mark all C# files as linguist-detectable
+*.cs linguist-detectable=true
+
+# Mark all ShaderLab files as linguist-vendored
+*.shader linguist-vendored=true
+
+# Mark all HLSL files as linguist-vendored
+*.hlsl linguist-vendored=true
+
+# Exclude TextMesh Pro folder from language detection
+TextMesh Pro/* linguist-vendored=true
+
+
+
+
