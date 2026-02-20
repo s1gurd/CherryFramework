@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace CherryFramework.SoundService
 {
-    [CreateAssetMenu(menuName = "Space/Audio Settings", fileName = "AudioSettings")]
+    [CreateAssetMenu(menuName = "Audio/Sound Service/Settings", fileName = "AudioSettings")]
     public class GlobalAudioSettings : ScriptableObject
     {
         [Title("Sound Emitting settings")]

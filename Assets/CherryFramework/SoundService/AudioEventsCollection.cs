@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace CherryFramework.SoundService
 {
-    [CreateAssetMenu(menuName = "Space/Audio Events Collection", fileName = "AudioEventsCollection")]
+    [CreateAssetMenu(menuName = "Audio/Sound Service/Audio Events Collection", fileName = "AudioEventsCollection")]
     public class AudioEventsCollection : ScriptableObject
     {
         [ListDrawerSettings(
