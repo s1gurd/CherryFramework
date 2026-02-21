@@ -10,6 +10,13 @@ namespace CherryFramework.DependencyManager
         
         private HashSet<Type> _installedDependencies = new HashSet<Type>();
         
+        protected abstract void Install();
+
+        private void Awake()
+        {
+            Install();
+        }
+
         protected void BindAsSingleton<TService>(TService instance) 
             where TService : class
         {

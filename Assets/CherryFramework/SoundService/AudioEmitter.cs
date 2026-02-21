@@ -1,7 +1,7 @@
 ﻿using System;
 using CherryFramework.BaseClasses;
 using CherryFramework.DependencyManager;
-using CherryFramework.TickDipatcher;
+using CherryFramework.TickDispatcher;
 using CherryFramework.Utils;
 using DG.Tweening;
 using TriInspector;

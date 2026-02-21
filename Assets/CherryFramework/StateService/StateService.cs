@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using CherryFramework.BaseClasses;
 using CherryFramework.DependencyManager;
-using CherryFramework.TickDipatcher;
+using CherryFramework.TickDispatcher;
 using UnityEngine;
 
 namespace CherryFramework.StateService

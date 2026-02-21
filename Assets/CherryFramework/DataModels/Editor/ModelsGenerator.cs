@@ -16,12 +16,12 @@ namespace CherryFramework.DataModels.Editor
             Debug.Log("[Models Generator] Start...");
             context.OverrideFolderPath(CodeGenConstants.BasePath);
             
-            if (Directory.Exists(Path.Combine(CodeGenConstants.BasePath, CodeGenConstants.ModelsPath)))
+            if (Directory.Exists(Path.Combine(CodeGenConstants.BasePath, CodeGenConstants.ModelsPathAndNamespace)))
             {
-                Directory.Delete(Path.Combine(CodeGenConstants.BasePath, CodeGenConstants.ModelsPath), true);
+                Directory.Delete(Path.Combine(CodeGenConstants.BasePath, CodeGenConstants.ModelsPathAndNamespace), true);
             }
 
-            Directory.CreateDirectory(Path.Combine(CodeGenConstants.BasePath, CodeGenConstants.ModelsPath));
+            Directory.CreateDirectory(Path.Combine(CodeGenConstants.BasePath, CodeGenConstants.ModelsPathAndNamespace));
             
             var templates = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes())
@@ -76,7 +76,7 @@ namespace CherryFramework.DataModels.Editor
                 code = code.Replace(CodeGenConstants.PropsPlaceholder, props.ToString());
 
                 var modelFilename = new StringBuilder();
-                modelFilename.Append(Path.Combine(CodeGenConstants.ModelsPath, modelName));
+                modelFilename.Append(Path.Combine(CodeGenConstants.ModelsPathAndNamespace, modelName));
                 modelFilename.Append(CodeGenConstants.FilenameEnd);
                 context.AddCode(modelFilename.ToString(), code);
             }

@@ -8,7 +8,7 @@ namespace CherryFramework.BaseClasses
     {
         private Action _onDestroy;  
         
-        public Bindings Bindings { get; } = new();
+        public Bindings Bindings { get; } = new Bindings();
 
         public void AddUnsubscription(Action action)
         {

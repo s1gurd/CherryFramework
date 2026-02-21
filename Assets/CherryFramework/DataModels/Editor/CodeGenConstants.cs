@@ -4,7 +4,7 @@ namespace CherryFramework.DataModels.Editor
     {
         public const string FilenameEnd = ".Generated.cs";
         public const string BasePath = "Assets/Scripts";
-        public const string ModelsPath = "GeneratedDataModels";
+        public const string ModelsPathAndNamespace = "GeneratedDataModels";
 
         public const string TemplateSuffix = "Template";
         public const string ModelSuffix = "Model";
@@ -31,7 +31,7 @@ using Newtonsoft.Json;
 using CherryFramework.DataModels;
 using {TemplateNamespacePlaceholder};
 
-namespace SpaceGame.DataModels
+namespace {ModelsPathAndNamespace}
 {{
     [Serializable]
     public class {ModelNamePlaceholder} : DataModelBase
