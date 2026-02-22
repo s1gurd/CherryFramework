@@ -2,20 +2,27 @@
 using System.Collections.Generic;
 using System.Linq;
 using CherryFramework.Utils;
+using CherryFramework.Utils.PlayerPrefsWrapper;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace CherryFramework.DataModels.DataProviders
+namespace CherryFramework.DataModels.ModelDataStorageBridges
 {
-    public class PlayerPrefsBridge : IDataStorageBridge
+    public class PlayerPrefsBridge : IModelDataStorageBridge
     {
 	    private const string SingletonPrefix = "SINGLETON";
 	    
 	    private Dictionary<Type, DataModelBase> _singletonModels;
 	    private HashSet<(DataModelBase model, string id)> _playerPrefsModels;
 	    
+	    private IPlayerPrefs _playerPrefs;
 	    private DateTime _lastSaveTime;
 	    private bool _debugMode;
+
+	    public PlayerPrefsBridge(IPlayerPrefs playerPrefs)
+	    {
+		    _playerPrefs = playerPrefs;
+	    }
 
 	    public void Setup(Dictionary<Type, DataModelBase> singletonModels, HashSet<(DataModelBase model, string id)> playerPrefsModels, bool debugMode = false)
 	    {
@@ -32,10 +39,10 @@ namespace CherryFramework.DataModels.DataProviders
 		    
 	        if (_debugMode)
 		        Debug.Log($"[Model Service - PlayerPrefs] Removing model {model.GetType()} from Player Prefs...");
-	        var key = PlayerPrefsUtils.CreateKey(id, model.GetType().ToString());
-	        if (PlayerPrefs.HasKey(key))
+	        var key = DataUtils.CreateKey(id, model.GetType().ToString());
+	        if (_playerPrefs.HasKey(key))
 	        {
-		        PlayerPrefs.DeleteKey(key);
+		        _playerPrefs.DeleteKey(key);
 	        }
         }
         
@@ -44,8 +51,8 @@ namespace CherryFramework.DataModels.DataProviders
 	        if (string.IsNullOrEmpty(id))
 		        id = SingletonPrefix;
 	        
-	        var key = PlayerPrefsUtils.CreateKey(id, model.GetType().ToString());
-	        return PlayerPrefs.HasKey(key);
+	        var key = DataUtils.CreateKey(id, model.GetType().ToString());
+	        return _playerPrefs.HasKey(key);
         }
 
         public bool ModelExistsInStorage<T>(string id)
@@ -53,8 +60,8 @@ namespace CherryFramework.DataModels.DataProviders
 	        if (string.IsNullOrEmpty(id))
 		        id = SingletonPrefix;
 	        
-	        var key = PlayerPrefsUtils.CreateKey(id, typeof(T).ToString());
-	        return PlayerPrefs.HasKey(key);
+	        var key = DataUtils.CreateKey(id, typeof(T).ToString());
+	        return _playerPrefs.HasKey(key);
         }
 
 		public void LinkModelToStorage(DataModelBase model, string id, bool makeReady = true)
@@ -75,14 +82,14 @@ namespace CherryFramework.DataModels.DataProviders
 				return;
 			}
 			
-			var key = PlayerPrefsUtils.CreateKey(id, model.GetType().ToString());
+			var key = DataUtils.CreateKey(id, model.GetType().ToString());
 			
 			if (_debugMode)
 				Debug.Log($"[Model Service - PlayerPrefs] Linking model {model.GetType()} to Player Prefs with key {key}...");
 			
-			if (PlayerPrefs.HasKey(key) && !PlayerPrefs.HasKey("FullDataReset"))
+			if (_playerPrefs.HasKey(key))
 			{
-				var json = PlayerPrefs.GetString(key);
+				var json = _playerPrefs.GetString(key);
 				if (_debugMode)
 					Debug.Log($"[Model Service - PlayerPrefs] Got model by key: {key} from PlayerPrefs: {json}");
 				JsonConvert.PopulateObject(json, model);
@@ -90,7 +97,7 @@ namespace CherryFramework.DataModels.DataProviders
 			else
 			{
 				if (_debugMode) 
-					Debug.Log($"[Model Service - PlayerPrefs] {(PlayerPrefs.HasKey("FullDataReset") ? "RESET" : "NOT FOUND")} model by key: {key} in PlayerPrefs");
+					Debug.Log($"[Model Service - PlayerPrefs] NOT FOUND model by key: {key} in PlayerPrefs");
 			}
 			
 			_playerPrefsModels.Add((model, id));
@@ -107,9 +114,9 @@ namespace CherryFramework.DataModels.DataProviders
 			}
 			
 			var id = _playerPrefsModels.FirstOrDefault(t => t.model == model).id;
-			var key = PlayerPrefsUtils.CreateKey(id, model.GetType().ToString());
+			var key = DataUtils.CreateKey(id, model.GetType().ToString());
 			var json = JsonConvert.SerializeObject(model);
-			PlayerPrefs.SetString(key, json);
+			_playerPrefs.SetString(key, json);
 			if (_debugMode) 
 				Debug.Log($"[Model Service - PlayerPrefs] Saved model {key} with content: {json}");
 		}

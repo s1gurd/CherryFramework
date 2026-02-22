@@ -1,8 +1,9 @@
 ﻿using CherryFramework.DataModels;
-using CherryFramework.DataModels.DataProviders;
+using CherryFramework.DataModels.ModelDataStorageBridges;
 using CherryFramework.DependencyManager;
 using CherryFramework.StateService;
 using CherryFramework.TickDispatcher;
+using CherryFramework.Utils.PlayerPrefsWrapper;
 using Sample.Scripts.Settings;
 using UnityEngine;
 
@@ -12,7 +13,7 @@ namespace Sample.Scripts
     [DefaultExecutionOrder(-10000)]
     public class GameInstaller : InstallerBehaviourBase
     {
-        [SerializeField] private GameSettings _gameSettings;
+        [SerializeField] private GameSettings gameSettings;
         
         protected override void Install()
         {
@@ -20,9 +21,9 @@ namespace Sample.Scripts
             // Notice that binding can be called by multiple ways - generic or by instance
             BindAsSingleton<Ticker>();
             BindAsSingleton<StateService>();
-            BindAsSingleton(new ModelService(new PlayerPrefsBridge(), true));
+            BindAsSingleton(new ModelService(new PlayerPrefsBridge(new PlayerPrefsData()), true));
             BindAsSingleton(new InputSystem_Actions());
-            BindAsSingleton(_gameSettings);
+            BindAsSingleton(gameSettings);
             BindAsSingleton(Camera.main);
         }
     }

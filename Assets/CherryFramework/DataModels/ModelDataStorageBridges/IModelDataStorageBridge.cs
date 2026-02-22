@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using CherryFramework.Utils.PlayerPrefsWrapper;
 
-namespace CherryFramework.DataModels.DataProviders
+namespace CherryFramework.DataModels.ModelDataStorageBridges
 {
-    public interface IDataStorageBridge
+    public interface IModelDataStorageBridge
     {
         void Setup(Dictionary<Type, DataModelBase> singletonModels, HashSet<(DataModelBase model, string id)> playerPrefsModels, bool debugMode);
         void DeleteModelFromStorage(DataModelBase model, string id);

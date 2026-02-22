@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using CherryFramework.DataModels.DataProviders;
+using CherryFramework.DataModels.ModelDataStorageBridges;
 using CherryFramework.Utils;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -13,9 +13,9 @@ namespace CherryFramework.DataModels
 		private readonly Dictionary<Type, DataModelBase> _singletonModels = new();
 		private readonly HashSet<(DataModelBase model, string id)> _playerPrefsModels = new();
 		
-		private IDataStorageBridge _dataStorageBridge;
+		private IModelDataStorageBridge _dataStorageBridge;
 		
-		public ModelService(IDataStorageBridge bridge, bool debug)
+		public ModelService(IModelDataStorageBridge bridge, bool debug)
 		{
 			_dataStorageBridge = bridge;
 			_dataStorageBridge.Setup(_singletonModels, _playerPrefsModels, debug);
@@ -33,7 +33,7 @@ namespace CherryFramework.DataModels
             return newModel;
         }
 
-        public bool AddSingletonModel<T>(T source) where T : DataModelBase
+        public bool MakeModelSingleton<T>(T source) where T : DataModelBase
         {
 	        if (_singletonModels.ContainsKey(typeof(T)))
 	        {

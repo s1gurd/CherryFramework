@@ -133,20 +133,21 @@ namespace CherryFramework.SaveGameManager
             _persistentComponents[component] = GetObjectId();
         }
 
-        private void SaveData()
+        public void SaveData()
         {
             if (DateTime.Now.Subtract(_lastSaveTime).TotalSeconds < 5)
                 return;
             
             _lastSaveTime = DateTime.Now;
-            _position = CherryFramework.Utils.MathUtils.Vector3ToArray(transform.position);
-            _rotation = CherryFramework.Utils.MathUtils.QuaternionToArray(transform.rotation);
+            _position = MathUtils.Vector3ToArray(transform.position);
+            _rotation = MathUtils.QuaternionToArray(transform.rotation);
             
             foreach (var comp in _persistentComponents)
             {
                 _saveGame.SaveData(comp);
             }
         }
+        
 #if UNITY_EDITOR
         private void OnValidate()
         {

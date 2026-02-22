@@ -3,22 +3,24 @@ using System.Linq;
 using System.Reflection;
 using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
-using CherryFramework.DependencyManager;
 using CherryFramework.Utils;
+using CherryFramework.Utils.PlayerPrefsWrapper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 namespace CherryFramework.SaveGameManager
 {
-    public class SaveGameManager : InjectClass
-    {
-        [Inject] protected readonly ModelService ModelService;
-        
+    public class SaveGameManager
+    { 
         protected bool DebugMessages = false;
+        
+        private IPlayerPrefs _playerPrefs;
+        public HashSet<PersistentObject> PersistentObjects { get; } =  new ();
 
-        protected SaveGameManager(bool debugMessages)
+        protected SaveGameManager(IPlayerPrefs playerPrefs, bool debugMessages)
         {
+            _playerPrefs = playerPrefs;
             DebugMessages = debugMessages;
         }
 
@@ -26,23 +28,23 @@ namespace CherryFramework.SaveGameManager
         {
             if (component is not IGameSaveData gameSave)
             {
-                Debug.LogError($"[SaveGame Helper] Tried to get save game data for component {component}, which is not an IGameSaveData!", component);
+                Debug.LogError($"[Save Game Manager] Tried to get save game data for component {component}, which is not an IGameSaveData!", component);
                 return;
             }
             
             var persistentObj = component.gameObject.GetComponent<PersistentObject>();
             if (!persistentObj)
             {
-                if (DebugMessages) Debug.Log($"[SaveGame Helper] Tried to get save game data for component {component}, whose gameobject does not have PersistentObject component!", component);
+                if (DebugMessages) Debug.Log($"[Save Game Manager] Tried to get save game data for component {component}, whose gameobject does not have PersistentObject component!", component);
                 return;
             }
 
             var id = persistentObj.GetObjectId();
             if (id == null) return;
             
-            var key = PlayerPrefsUtils.CreateKey(id, component.GetType().ToString());
+            var key = DataUtils.CreateKey(id, component.GetType().ToString());
             
-            if (DebugMessages) Debug.Log($"[SaveGame Helper] Linking component {component.GetType()} with key  {key}");
+            if (DebugMessages) Debug.Log($"[Save Game Manager] Linking component {component.GetType()} with key  {key}");
             
             var props = component.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
@@ -53,10 +55,11 @@ namespace CherryFramework.SaveGameManager
 
             if (!props.Any() && !fields.Any())
             {
-                Debug.LogError($"[SaveGame Helper] No data found to link in component {component}");
+                Debug.LogError($"[Save Game Manager] No data found to link in component {component}");
                 return;
             }
             
+            PersistentObjects.Add(persistentObj);
             persistentObj.RegisterComponent(gameSave);
             
             reset &=  component is not IIgnoreReset;
@@ -66,13 +69,7 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(field.FieldType))
                 {
-                    var model = field.GetValue(component) as DataModelBase;
-                    var modelKey = PlayerPrefsUtils.CreateKey(id, field.Name);
-                    if (reset)
-                    {
-                        ModelService.DeleteModelFromStorage(model, modelKey);
-                    }
-                    ModelService.LinkModelToStorage(model, modelKey);
+                    Debug.LogError($"[Save Game Manager] \"{field.FieldType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.LinkModelToStorage)} instead.");
                 }
             }
 
@@ -80,20 +77,14 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(prop.PropertyType))
                 {
-                    var model = prop.GetValue(component) as DataModelBase;
-                    var modelKey = PlayerPrefsUtils.CreateKey(id, prop.Name);
-                    if (reset)
-                    {
-                        ModelService.DeleteModelFromStorage(model, modelKey);
-                    }
-                    ModelService.LinkModelToStorage(model, modelKey);
+                    Debug.LogError($"[Save Game Manager] \"{prop.PropertyType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.LinkModelToStorage)} instead.");
                 }
             }
             
-            if (!PlayerPrefs.HasKey(key)) return;
+            if (!_playerPrefs.HasKey(key)) return;
             
-            var str = PlayerPrefs.GetString(key);
-            if (DebugMessages) Debug.Log($"[SaveGame Helper] Component {component.GetType()} with key {key} found data: {str}");
+            var str = _playerPrefs.GetString(key);
+            if (DebugMessages) Debug.Log($"[Save Game Manager] Component {component.GetType()} with key {key} found data: {str}");
             var json = (JObject)JsonConvert.DeserializeObject(str);
 
             if (json != null)
@@ -138,11 +129,11 @@ namespace CherryFramework.SaveGameManager
 
             if (!props.Any() && !fields.Any())
             {
-                Debug.LogError($"[SaveGame Helper] No data found to save in component {component}");
+                Debug.LogError($"[Save Game Manager] No data found to save in component {component}");
                 return;
             }
 
-            var key = PlayerPrefsUtils.CreateKey(source.Value, component.GetType().ToString());
+            var key = DataUtils.CreateKey(source.Value, component.GetType().ToString());
             
             var saveObject = new JObject();
             
@@ -173,10 +164,18 @@ namespace CherryFramework.SaveGameManager
                 saveObject.Add(prop.Name, token);
             }
             
-            PlayerPrefs.SetString(key, saveObject.ToString());
-            PlayerPrefs.Save();
+            _playerPrefs.SetString(key, saveObject.ToString());
+            _playerPrefs.Save();
             
-            if (DebugMessages) Debug.Log($"[SaveGame Helper] Save key {key} with {saveObject}");
+            if (DebugMessages) Debug.Log($"[Save Game Manager] Save key {key} with {saveObject}");
+        }
+
+        public void SaveAllLinkedData()
+        {
+            foreach (var persistentObj in PersistentObjects)
+            {
+                persistentObj.SaveData();
+            }
         }
     }
 }

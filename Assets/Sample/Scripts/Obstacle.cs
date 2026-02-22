@@ -22,8 +22,10 @@ public class Obstacle : BehaviourBase, ITickable
         _leftEdge = _camera.ScreenToWorldPoint(Vector3.zero).x - 2f;
     }
 
-    //Here we get the reference to the model in OnEnable because Tick can be called before Start
-    //(that's the difference between classic Update and Tick) 
+    // Here we get the reference to the data model in OnEnable because Tick can be called before Start
+    // (that's the difference between classic Update and Tick) 
+    // We register Tick here instead of Start, because Obstacle objects are pooled, and we want turn tick back on 
+    // when object is pulled from the pool
     protected override void OnEnable()
     {
         base.OnEnable();
@@ -39,6 +41,8 @@ public class Obstacle : BehaviourBase, ITickable
 
     public void Tick(float deltaTime)
     {
+        // If performance is not a concern, you may skip Register/UnRegister mess with ticker in OnEnable/OnDisable
+        // callbacks and simply check here for object activity and return; when inactive
         if (!_stateService.IsStatusActive(EventKeys.GameRunning))
         {
             return;

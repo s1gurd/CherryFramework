@@ -1,6 +1,6 @@
 namespace CherryFramework.Utils
 {
-    public static class PlayerPrefsUtils
+    public static class DataUtils
     {
         public static string CreateKey(params string[] value) =>  string.Join("-", value);
     }
