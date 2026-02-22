@@ -46,7 +46,7 @@ namespace CherryFramework.SaveGameManager
             {
                 _position = MathUtils.Vector3ToArray(transform.position);
                 _rotation = MathUtils.QuaternionToArray(transform.rotation);
-                _saveGame.LinkData(this);
+                _saveGame.LoadData(this);
                 var anim = GetComponent<Animator>();
                 if (anim && anim.applyRootMotion)
                 {
@@ -60,25 +60,6 @@ namespace CherryFramework.SaveGameManager
             }
             
             _lastSaveTime = DateTime.Now;
-        }
-        
-        private void OnApplicationFocus(bool hasFocus)
-        {
-            if (hasFocus || Application.isEditor) return;
-
-            SaveData();
-        }
-
-        private void OnApplicationPause(bool pauseStatus)
-        {
-            if (pauseStatus || Application.isEditor) return;
-
-            SaveData();
-        }
-
-        private void OnApplicationQuit()
-        {
-            SaveData();
         }
 
         public string GetObjectId()

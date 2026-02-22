@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
 using CherryFramework.Utils;
 using CherryFramework.Utils.PlayerPrefsWrapper;
@@ -24,14 +23,8 @@ namespace CherryFramework.SaveGameManager
             DebugMessages = debugMessages;
         }
 
-        public virtual void LinkData(BehaviourBase component, bool reset = false)
+        public virtual void LoadData<T>(T component, bool reset = false) where T : MonoBehaviour, IGameSaveData
         {
-            if (component is not IGameSaveData gameSave)
-            {
-                Debug.LogError($"[Save Game Manager] Tried to get save game data for component {component}, which is not an IGameSaveData!", component);
-                return;
-            }
-            
             var persistentObj = component.gameObject.GetComponent<PersistentObject>();
             if (!persistentObj)
             {
@@ -60,7 +53,7 @@ namespace CherryFramework.SaveGameManager
             }
             
             PersistentObjects.Add(persistentObj);
-            persistentObj.RegisterComponent(gameSave);
+            persistentObj.RegisterComponent(component);
             
             reset &=  component is not IIgnoreReset;
             reset |= persistentObj.ForceReset;
@@ -170,7 +163,7 @@ namespace CherryFramework.SaveGameManager
             if (DebugMessages) Debug.Log($"[Save Game Manager] Save key {key} with {saveObject}");
         }
 
-        public void SaveAllLinkedData()
+        public void SaveAllData()
         {
             foreach (var persistentObj in PersistentObjects)
             {
