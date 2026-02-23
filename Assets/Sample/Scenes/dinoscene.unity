@@ -449,7 +449,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: -10}
+  m_LocalPosition: {x: -0.86, y: 2, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -465,9 +465,9 @@ GameObject:
   m_Component:
   - component: {fileID: 633857094}
   - component: {fileID: 633857093}
-  - component: {fileID: 633857092}
   - component: {fileID: 633857091}
   - component: {fileID: 633857095}
+  - component: {fileID: 633857096}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -487,31 +487,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 138d6dc68fa11584d92ef3983d4939ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!143 &633857092
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 633857090}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 1
-  m_Radius: 0.45833334
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!212 &633857093
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -597,6 +572,31 @@ MonoBehaviour:
   sprites:
   - {fileID: 21300000, guid: 35fc7b77def46f446b1e1e64e5941111, type: 3}
   - {fileID: 21300000, guid: 25c43fae590d5344492dd8bfdde79775, type: 3}
+--- !u!143 &633857096
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 633857090}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 1
+  m_Radius: 0.45833334
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1087192227
 GameObject:
   m_ObjectHideFlags: 0
@@ -881,6 +881,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1289815423}
   - component: {fileID: 1289815422}
+  - component: {fileID: 1289815424}
   m_Layer: 0
   m_Name: Spawner
   m_TagString: Untagged
@@ -900,23 +901,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27c9e7357a7d0ba438dad0c67ddc4732, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  objects:
-  - prefab: {fileID: 4689648233774467364, guid: 79941a486faaffd478af65acec17e936, type: 3}
-    spawnchance: 0.2
-  - prefab: {fileID: 1505281818791174598, guid: 4749f4a954a28e14f8dbae5570c4e158, type: 3}
-    spawnchance: 0.18
-  - prefab: {fileID: 164840125034026697, guid: 68c99c4d94b2d1e4da0f2d2272bdab8e, type: 3}
-    spawnchance: 0.16
-  - prefab: {fileID: 1113772826211527713, guid: 723a78cd9d9bd404ea1a18b1e5ec556a, type: 3}
-    spawnchance: 0.14
-  - prefab: {fileID: 3561211044388581728, guid: e77d880b4af50c84b83685afdd319e21, type: 3}
-    spawnchance: 0.12
-  - prefab: {fileID: 4272247529889616933, guid: 0917800a50fe40745bc5350690b2580e, type: 3}
-    spawnchance: 0.1
-  - prefab: {fileID: 6843301446389368667, guid: b2b790626134b174a86b2fe38a28efdf, type: 3}
-    spawnchance: 0.05
-  minSpawnRate: 1
-  maxSpawnRate: 2
 --- !u!4 &1289815423
 Transform:
   m_ObjectHideFlags: 0
@@ -932,6 +916,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1289815424
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289815421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 775da645630f4b31b4884138d4b637de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnableObject: 0
+  customId: OBJ
+  guid: 58f6ad04-11e7-41f9-86cf-a87ef00b0a3b
+  saveTransform: 0
+  <ForceReset>k__BackingField: 0
 --- !u!1 &1758118589
 GameObject:
   m_ObjectHideFlags: 0

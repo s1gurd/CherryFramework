@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace CherryFramework.DataModels
 {
-	public class ModelService : IDisposable
+	public class ModelService
 	{
 		public readonly IModelDataStorageBridge DataStorage;
 		
@@ -40,10 +40,5 @@ namespace CherryFramework.DataModels
 	        _singletonModels.Add(typeof(T), source);
 	        return true;
         }
-        
-		public void Dispose()
-		{
-			DataStorage.SaveAllModels();
-		}
 	}
 }

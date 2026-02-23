@@ -7,7 +7,6 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
     public interface IModelDataStorageBridge
     {
         void Setup(Dictionary<Type, DataModelBase> singletonModels, bool debugMode);
-        void DeleteModelFromStorage(DataModelBase model);
         bool ModelExistsInStorage(DataModelBase model);
         bool SingletonModelExistsInStorage<T>(string slotId = "", string id = "");
         void LinkModelToStorage(DataModelBase model, bool ready = true);
@@ -16,5 +15,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
         void SaveAllModelsById(string id);
         void SaveAllModelsBySlot(string slotId);
         void SaveAllModels();
+        void DeleteModelFromStorage(DataModelBase model);
+        void UnlinkModelFromStorage(DataModelBase model);
     }
 }

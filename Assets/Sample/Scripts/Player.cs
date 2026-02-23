@@ -5,7 +5,7 @@ using Sample.Scripts.Settings;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class Player : BehaviourBase, ITickable
+public class Player : BehaviourBase, IFixedTickable
 {
     [Inject] private readonly GameSettings _gameSettings;
     [Inject] private readonly Ticker _ticker;
@@ -13,33 +13,49 @@ public class Player : BehaviourBase, ITickable
     
     private CharacterController _character;
     private Vector3 _direction;
-    private bool _jumpQueued;
+    private JumpState _jumpState;
 
     private void Start()
     {
         _character = GetComponent<CharacterController>();
         _inputSystem.Player.Jump.started += OnJump;
+        _jumpState = JumpState.Idle;
         _ticker.Register(this);
     }
 
     private void OnJump(InputAction.CallbackContext obj)
     {
-        if (_jumpQueued) return;
+        if (_jumpState != JumpState.Idle) return;
         
         _direction = Vector3.up * _gameSettings.jumpForce;
-        _jumpQueued = true;
+        _jumpState = JumpState.Pending;
     }
 
-    public void Tick(float deltaTime)
+    public void FixedTick(float deltaTime)
     {
-        if(_character.isGrounded){
+        if(_jumpState == JumpState.Jumping && _character.isGrounded){
             _direction=Vector3.zero;
-            _jumpQueued=false;
+            _jumpState = JumpState.Idle;
         }
-        else
+
+        if (_jumpState == JumpState.Pending)
+        {
+            _jumpState = JumpState.Jumping;
+        }
+        
+        if (_jumpState == JumpState.Jumping)
         {
             _direction += Vector3.down * (_gameSettings.gravity * deltaTime);
         }
         _character.Move(_direction * deltaTime);
     }
+    
+    private enum JumpState
+    {
+        Idle,
+        Pending,
+        Jumping
+    }
 }
+
+

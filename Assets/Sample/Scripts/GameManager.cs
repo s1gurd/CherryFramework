@@ -1,11 +1,13 @@
 using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
+using CherryFramework.SaveGameManager;
 using CherryFramework.StateService;
 using DG.Tweening;
 using GeneratedDataModels;
 using Sample.Scripts.Settings;
 using UnityEngine;
+
 
 public class GameManager : BehaviourBase
 {
@@ -13,6 +15,7 @@ public class GameManager : BehaviourBase
     [Inject] private readonly ModelService _modelService;
     [Inject] private readonly StateService _stateService;
     [Inject] private readonly InputSystem_Actions _inputSystem;
+    [Inject] private readonly SaveGameManager _saveGame;
 
     private Sequence _speedUpTimer;
     private GameStateDataModel _gameState;
@@ -62,5 +65,10 @@ public class GameManager : BehaviourBase
         _stateService.UnsetStatus(EventKeys.GameRunning);
         _gameState.GameSpeed = _gameSettings.initialGameSpeed;
         _inputSystem.Player.Disable();
+    }
+    
+    private void OnApplicationQuit()
+    {
+        _saveGame.SaveAllData();
     }
 }

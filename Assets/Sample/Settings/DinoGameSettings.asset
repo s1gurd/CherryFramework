@@ -17,3 +17,20 @@ MonoBehaviour:
   gameSpeedIncrease: 0.5
   gravity: 19.6
   jumpForce: 8
+  spawnObjects:
+  - source: {fileID: -5804601256915796770, guid: 79941a486faaffd478af65acec17e936, type: 3}
+    spawnChance: 30
+  - source: {fileID: -8691920162390269731, guid: 4749f4a954a28e14f8dbae5570c4e158, type: 3}
+    spawnChance: 27
+  - source: {fileID: 6316561569203066221, guid: 68c99c4d94b2d1e4da0f2d2272bdab8e, type: 3}
+    spawnChance: 24
+  - source: {fileID: 2540871942051379849, guid: 723a78cd9d9bd404ea1a18b1e5ec556a, type: 3}
+    spawnChance: 21
+  - source: {fileID: -5882008928865699378, guid: e77d880b4af50c84b83685afdd319e21, type: 3}
+    spawnChance: 17
+  - source: {fileID: 4705904365948586987, guid: 0917800a50fe40745bc5350690b2580e, type: 3}
+    spawnChance: 15
+  - source: {fileID: 2348567384848177906, guid: b2b790626134b174a86b2fe38a28efdf, type: 3}
+    spawnChance: 11
+  minSpawnRate: 1
+  maxSpawnRate: 2

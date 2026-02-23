@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &6843301446389368667
+--- !u!1 &549177572286519153
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,40 +8,39 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 5776732508083074904}
-  - component: {fileID: 1047531585564906680}
-  - component: {fileID: 6387892920325878399}
-  - component: {fileID: 8766647578458428639}
-  - component: {fileID: -894766860304487161}
+  - component: {fileID: 9171393916561618879}
+  - component: {fileID: 2510170235743964527}
+  - component: {fileID: 3903224481595378573}
+  - component: {fileID: 692098099054073463}
   m_Layer: 0
-  m_Name: Bird
-  m_TagString: obstacle
+  m_Name: GameObject
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &5776732508083074904
+--- !u!4 &9171393916561618879
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6843301446389368667}
+  m_GameObject: {fileID: 549177572286519153}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 5776732508083074904}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &1047531585564906680
+--- !u!212 &2510170235743964527
 SpriteRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6843301446389368667}
+  m_GameObject: {fileID: 549177572286519153}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -52,6 +51,9 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -87,13 +89,13 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!65 &6387892920325878399
+--- !u!65 &3903224481595378573
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6843301446389368667}
+  m_GameObject: {fileID: 549177572286519153}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -108,13 +110,13 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.9583333, y: 0.833334, z: 0.2}
   m_Center: {x: 0, y: -0.83334, z: 0}
---- !u!114 &8766647578458428639
+--- !u!114 &692098099054073463
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6843301446389368667}
+  m_GameObject: {fileID: 549177572286519153}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01a85e7c6ff20f94a9ccde03a8a414ec, type: 3}
@@ -123,8 +125,40 @@ MonoBehaviour:
   sprites:
   - {fileID: 21300000, guid: c166cf1333ca7b04ea218b8087627228, type: 3}
   - {fileID: 21300000, guid: fb334cb6d98db7b448c0059d06d042b5, type: 3}
-  spriteRenderer: {fileID: 0}
-  frame: 0
+--- !u!1 &6843301446389368667
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5776732508083074904}
+  - component: {fileID: -894766860304487161}
+  - component: {fileID: 2348567384848177906}
+  m_Layer: 0
+  m_Name: Bird
+  m_TagString: obstacle
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5776732508083074904
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6843301446389368667}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 9171393916561618879}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &-894766860304487161
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -137,3 +171,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4317989541d568e418e1ba008ffa6902, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &2348567384848177906
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6843301446389368667}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 775da645630f4b31b4884138d4b637de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnableObject: 1
+  customId: Obstacle
+  guid: 
+  saveTransform: 1
+  forceReset: 0

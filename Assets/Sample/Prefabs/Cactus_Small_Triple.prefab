@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 9050672241793608977}
   - component: {fileID: 9021188597551206783}
   - component: {fileID: 5343583049292544910}
+  - component: {fileID: -5882008928865699378}
   m_Layer: 0
   m_Name: Cactus_Small_Triple
   m_TagString: obstacle
@@ -51,6 +52,9 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -119,3 +123,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4317989541d568e418e1ba008ffa6902, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &-5882008928865699378
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3561211044388581728}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 775da645630f4b31b4884138d4b637de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnableObject: 1
+  customId: Obstacle
+  guid: 
+  saveTransform: 1
+  forceReset: 0

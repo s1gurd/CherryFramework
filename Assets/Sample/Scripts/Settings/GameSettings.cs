@@ -1,4 +1,5 @@
-﻿using TriInspector;
+﻿using CherryFramework.SaveGameManager;
+using TriInspector;
 using UnityEngine;
 
 namespace Sample.Scripts.Settings
@@ -14,5 +15,17 @@ namespace Sample.Scripts.Settings
         [Title("Player settings")]
         public float gravity=9.8f*2f;
         public float jumpForce=8f;
+        
+        [Title("Obstacle spawning")]
+        [ListDrawerSettings(AlwaysExpanded = true, Draggable = true)]public SpawnableObject[] spawnObjects;
+        public float minSpawnRate = 1f;
+        public float maxSpawnRate = 2f;
+    }
+    
+    [System.Serializable]
+    public struct SpawnableObject{
+        public PersistentObject source;
+        [Range(0,100)]
+        public int spawnChance;
     }
 }

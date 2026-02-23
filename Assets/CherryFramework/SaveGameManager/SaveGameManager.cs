@@ -19,7 +19,7 @@ namespace CherryFramework.SaveGameManager
 
         public string SlotId { get; private set; } = "";
 
-        protected SaveGameManager(IPlayerPrefs playerPrefs, bool debugMessages)
+        public SaveGameManager(IPlayerPrefs playerPrefs, bool debugMessages = false)
         {
             _playerPrefs = playerPrefs;
             DebugMessages = debugMessages;
@@ -44,7 +44,7 @@ namespace CherryFramework.SaveGameManager
             persistentObj.RegisterComponent(component);
         }
 
-        public virtual void LoadData<T>(T component, bool reset = false) where T : MonoBehaviour, IGameSaveData
+        public virtual void LoadData<T>(T component) where T : MonoBehaviour, IGameSaveData
         {
             if (!_persistentObjects.TryGetValue(component, out var persistentObj))
             {
@@ -56,8 +56,6 @@ namespace CherryFramework.SaveGameManager
             if (id == null) return;
             
             var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
-            
-            if (DebugMessages) Debug.Log($"[Save Game Manager] Linking component {component.GetType()} with key  {key}");
             
             var props = component.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
@@ -71,9 +69,6 @@ namespace CherryFramework.SaveGameManager
                 Debug.LogError($"[Save Game Manager] No data found to link in component {component}");
                 return;
             }
-            
-            reset &=  component is not IIgnoreReset;
-            reset |= persistentObj.ForceReset;
 
             foreach (var field in fields)
             {
@@ -91,10 +86,14 @@ namespace CherryFramework.SaveGameManager
                 }
             }
             
-            if (!_playerPrefs.HasKey(key)) return;
+            if (!_playerPrefs.HasKey(key))
+            {
+                if (DebugMessages) Debug.Log($"[Save Game Manager] Not found data for component {component.GetType()} with key {key}");
+                return;
+            }
             
             var str = _playerPrefs.GetString(key);
-            if (DebugMessages) Debug.Log($"[Save Game Manager] Component {component.GetType()} with key {key} found data: {str}");
+            if (DebugMessages) Debug.Log($"[Save Game Manager] Loaded component {component.GetType()} with key {key} found data: {str}");
             var json = (JObject)JsonConvert.DeserializeObject(str);
 
             if (json != null)
@@ -106,7 +105,7 @@ namespace CherryFramework.SaveGameManager
                     var field = fields.FirstOrDefault(f => f.Name == data.Key);
                     if (field != null)
                     {
-                        if (!reset)
+                        if (!persistentObj.ForceReset)
                         {
                             field.SetValue(component, data.Value.ToObject(field.FieldType));
                         }
@@ -116,7 +115,7 @@ namespace CherryFramework.SaveGameManager
                     var prop = props.FirstOrDefault(p => p.Name == data.Key);
                     if (prop != null)
                     {
-                        if (!reset)
+                        if (!persistentObj.ForceReset)
                         {
                             prop.SetValue(component, data.Value.ToObject(prop.PropertyType));
                         }
@@ -191,6 +190,30 @@ namespace CherryFramework.SaveGameManager
             {
                 persistentObj.SaveData();
             }
+        }
+
+        public virtual void DeleteData<T>(T component) where T : MonoBehaviour, IGameSaveData
+        {
+            if (!_persistentObjects.TryGetValue(component, out var persistentObj))
+            {
+                Debug.LogError(
+                    $"[Save Game Manager] Tried to load data for component {component}, but it is not registered!");
+                return;
+            }
+
+            var id = persistentObj.GetObjectId();
+            if (id == null) return;
+
+            var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
+            
+            if (!_playerPrefs.HasKey(key))
+            {
+                if (DebugMessages) Debug.Log($"[Save Game Manager] Not found data to delete for component {component.GetType()} with key {key}");
+                return;
+            }
+            
+            _playerPrefs.DeleteKey(key);
+            if (DebugMessages) Debug.Log($"[Save Game Manager] Deleted data for component {component.GetType()} with key {key}");
         }
 
         public void SetCurrentSlot(string slotId)

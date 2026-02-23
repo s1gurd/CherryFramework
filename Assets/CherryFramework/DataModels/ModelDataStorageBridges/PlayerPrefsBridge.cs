@@ -29,20 +29,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 		    _debugMode = debugMode;
 		    _lastSaveTime = DateTime.Now;
 	    }
-
-	    public void DeleteModelFromStorage(DataModelBase model)
-	    {
-		    var id = string.IsNullOrEmpty(model.Id) ? SingletonPrefix : model.Id;
-		   
-	        if (_debugMode)
-		        Debug.Log($"[Model Service - PlayerPrefs] Removing model {model.GetType()} from Player Prefs...");
-	        var key = DataUtils.CreateKey(id, model.SlotId, model.GetType().ToString());
-	        if (_playerPrefs.HasKey(key))
-	        {
-		        _playerPrefs.DeleteKey(key);
-	        }
-        }
-        
+	    
         public bool ModelExistsInStorage(DataModelBase model)
         {
 	        var id = string.IsNullOrEmpty(model.Id) ? SingletonPrefix : model.Id;
@@ -107,7 +94,6 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 				Debug.LogError($"[Model Service - PlayerPrefs] Got request to save model of type {model.GetType()} which is not linked to Player Prefs!!");
 				return;
 			}
-			
 
 			var id = string.IsNullOrEmpty(model.Id) ? SingletonPrefix : model.Id;
 			var key = DataUtils.CreateKey(id, model.SlotId, model.GetType().ToString());
@@ -115,11 +101,6 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 			_playerPrefs.SetString(key, json);
 			if (_debugMode) 
 				Debug.Log($"[Model Service - PlayerPrefs] Saved model {key} with content: {json}");
-		}
-
-		public DataModelBase[] GetAllLinkedModels()
-		{
-			return _playerPrefsModels.ToArray();
 		}
 
 		public void SaveAllModelsById(string id)
@@ -162,5 +143,29 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 			}
 			PlayerPrefs.Save();
 		}
+		
+		public DataModelBase[] GetAllLinkedModels()
+		{
+			return _playerPrefsModels.ToArray();
+		}
+
+		public void UnlinkModelFromStorage(DataModelBase model)
+		{
+			_playerPrefsModels.Remove(model);
+		}
+		
+		public void DeleteModelFromStorage(DataModelBase model)
+		{
+			var id = string.IsNullOrEmpty(model.Id) ? SingletonPrefix : model.Id;
+		   
+			if (_debugMode)
+				Debug.Log($"[Model Service - PlayerPrefs] Removing model {model.GetType()} from Player Prefs...");
+			var key = DataUtils.CreateKey(id, model.SlotId, model.GetType().ToString());
+			if (_playerPrefs.HasKey(key))
+			{
+				_playerPrefs.DeleteKey(key);
+			}
+		}
+
     }
 }

@@ -11,7 +11,6 @@ using UnityEngine;
 
 #if UNITY_EDITOR
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using System.Linq;
 #endif
 
@@ -23,12 +22,13 @@ namespace CherryFramework.SaveGameManager
         
         [SerializeField] private bool spawnableObject;
         [ShowIf(nameof(spawnableObject))][SerializeField] private string customId = "OBJ";
-        [ShowIf(nameof(spawnableObject))][ReadOnly, ShowInInspector] private string _customSuffix = null;
-        [HideIf(nameof(spawnableObject))][ReadOnly] public string guid = null;
-
-        [SerializeField] private bool saveTransform;
+        [HideIf(nameof(spawnableObject))][InfoBox("For auto-filling of guid, you have to add scene to Build Settings!")]
+        [ReadOnly] public string guid = null;
         
-        [field: SerializeField] public bool ForceReset { get; private set; }
+        [SerializeField] private bool saveTransform;
+
+        [Title("DANGER ZONE")]
+        [SerializeField] private bool forceReset;
         
         [Inject] private readonly SaveGameManager _saveGame;
         [Inject] private readonly ModelService _modelService;
@@ -37,8 +37,9 @@ namespace CherryFramework.SaveGameManager
         [SaveGameData] private float[] _rotation =  new float[4];
 
         private readonly HashSet<IGameSaveData> _persistentComponents = new();
-        
-        private DateTime _lastSaveTime;
+
+        public bool ForceReset => forceReset;
+        public int? CustomSuffix { get; set; }
 
         private void Start()
         {
@@ -59,8 +60,6 @@ namespace CherryFramework.SaveGameManager
                 transform.position = MathUtils.ArrayToVector3(_position);
                 transform.rotation = MathUtils.ArrayToQuaternion(_rotation);
             }
-            
-            _lastSaveTime = DateTime.Now;
         }
 
         public string GetObjectId()
@@ -75,10 +74,10 @@ namespace CherryFramework.SaveGameManager
                 
                 var sb = new StringBuilder();
                 sb.Append(customId);
-                if (_customSuffix != null)
+                if (CustomSuffix != null)
                 {
                     sb.Append(":");
-                    sb.Append(_customSuffix);
+                    sb.Append(CustomSuffix.Value);
                 }
 
                 return sb.ToString();
@@ -99,16 +98,6 @@ namespace CherryFramework.SaveGameManager
                 return sb.ToString();
             }
         }
-
-        public void SetSuffix(string suffix)
-        {
-            _customSuffix = suffix;
-        }
-
-        public void SetSpawnable(bool spawnable)
-        {
-            spawnableObject = spawnable;
-        }
         
         public void RegisterComponent(IGameSaveData component)
         {
@@ -117,10 +106,6 @@ namespace CherryFramework.SaveGameManager
 
         public void SaveData()
         {
-            if (DateTime.Now.Subtract(_lastSaveTime).TotalSeconds < 5)
-                return;
-            
-            _lastSaveTime = DateTime.Now;
             _position = MathUtils.Vector3ToArray(transform.position);
             _rotation = MathUtils.QuaternionToArray(transform.rotation);
             
@@ -129,7 +114,7 @@ namespace CherryFramework.SaveGameManager
                 _saveGame.SaveData(comp);
             }
         }
-        
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
@@ -143,6 +128,7 @@ namespace CherryFramework.SaveGameManager
             }
         }
         
+        [HideIf(nameof(spawnableObject))][Button("Generate Guid")]
         private void FillGuid()
         {
             SerializedObject serializedObject = new SerializedObject(this);

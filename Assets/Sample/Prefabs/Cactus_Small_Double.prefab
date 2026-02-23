@@ -12,8 +12,9 @@ GameObject:
   - component: {fileID: 2320152821726251107}
   - component: {fileID: 3245012421133560765}
   - component: {fileID: 8968133715465788256}
+  - component: {fileID: 6316561569203066221}
   m_Layer: 0
-  m_Name: Cactus_Small_Doube
+  m_Name: Cactus_Small_Double
   m_TagString: obstacle
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -51,6 +52,9 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -119,3 +123,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4317989541d568e418e1ba008ffa6902, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &6316561569203066221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164840125034026697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 775da645630f4b31b4884138d4b637de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnableObject: 1
+  customId: Obstacle
+  guid: 
+  saveTransform: 1
+  forceReset: 0

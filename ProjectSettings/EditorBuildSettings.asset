@@ -6,8 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 2cda990e2423bbf4892e6590ba056729
+    path: Assets/Sample/Scenes/dinoscene.unity
+    guid: 106dec211b1cf0d49ad2841694ec781a
   m_configObjects:
+    com.unity.input.settings: {fileID: 11400000, guid: dffade8be5a02454496e6c5fc21d9a29, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 075809c4ccfef364ca4193abb396ee6e, type: 3}
   m_UseUCBPForAssetBundles: 0

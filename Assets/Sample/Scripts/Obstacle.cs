@@ -1,6 +1,7 @@
 using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
+using CherryFramework.SaveGameManager;
 using CherryFramework.StateService;
 using CherryFramework.TickDispatcher;
 using GeneratedDataModels;
@@ -16,6 +17,7 @@ public class Obstacle : BehaviourBase, ITickable
     
     private GameStateDataModel _gameState;
     private float _leftEdge;
+    private PersistentObject _persistentObject;
 
     void Start()
     {
@@ -48,15 +50,15 @@ public class Obstacle : BehaviourBase, ITickable
             return;
         }
         
-        transform.position += Vector3.left * _gameState.GameSpeedAccessor.ProcessedValue * deltaTime;
+        transform.position += Vector3.left * (_gameState.GameSpeedAccessor.ProcessedValue * deltaTime);
         if(transform.position.x < _leftEdge){
             gameObject.SetActive(false);
         }
     }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Player")) 
-            _gameState.PlayerDead = true;
-    }
+    // private void OnTriggerEnter(Collider other)
+    // {
+    //     if (other.CompareTag("Player")) 
+    //         _gameState.PlayerDead = true;
+    // }
 }

@@ -1,6 +1,7 @@
 ﻿using CherryFramework.DataModels;
 using CherryFramework.DataModels.ModelDataStorageBridges;
 using CherryFramework.DependencyManager;
+using CherryFramework.SaveGameManager;
 using CherryFramework.StateService;
 using CherryFramework.TickDispatcher;
 using CherryFramework.Utils.PlayerPrefsWrapper;
@@ -21,6 +22,7 @@ namespace Sample.Scripts
             // Notice that binding can be called by multiple ways - generic or by instance
             BindAsSingleton<Ticker>();
             BindAsSingleton<StateService>();
+            BindAsSingleton(new SaveGameManager(new PlayerPrefsData(), true));
             BindAsSingleton(new ModelService(new PlayerPrefsBridge(new PlayerPrefsData()), true));
             BindAsSingleton(new InputSystem_Actions());
             BindAsSingleton(gameSettings);
