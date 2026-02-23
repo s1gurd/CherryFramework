@@ -13,9 +13,14 @@ namespace CherryFramework.DataModels
         private readonly Dictionary<string, List<DownwardBindingHandler>> _handlers = new ();
         private bool _debugMode;
         private bool _bindingsOff;
+        private bool _ready;
 
+        public string Id { get; private set; } = "";
+        public string SlotId { get; private set; } = "";
+        
         protected Dictionary<string, Delegate> Getters = new ();
         protected Dictionary<string, Delegate> Setters = new ();
+        
         
         
         [JsonIgnore]
@@ -31,7 +36,8 @@ namespace CherryFramework.DataModels
             }
         }
 
-        private bool _ready;
+        [JsonIgnore]
+        public Accessor<bool> ReadyAccessor;
 
         protected DataModelBase()
         {
@@ -39,9 +45,6 @@ namespace CherryFramework.DataModels
             Setters.Add(nameof(Ready), new Action<bool>(o => Ready = o));
             ReadyAccessor = new Accessor<bool>(this, nameof(Ready));
         }
-        
-        [JsonIgnore]
-        public Accessor<bool> ReadyAccessor;
 
         public void AddBinding<T>(string memberName, DownwardBindingHandler handler, bool invokeImmediate)
         {
@@ -129,8 +132,6 @@ namespace CherryFramework.DataModels
             _debugMode = value;
         }
         
-        
-        
         public void FillFrom(object instance)
         {
             const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
@@ -147,6 +148,16 @@ namespace CherryFramework.DataModels
                 if (fromFields.TryGetValue(thisProp.Name, out var fromField) && thisProp.PropertyType == fromField.FieldType)
                     thisProp.SetValue(this, fromField.GetValue(instance));
             }
+        }
+
+        public void SetId(string id)
+        {
+            Id = id;
+        }
+        
+        public void SetSlotId(string slotId)
+        {
+            SlotId = slotId;
         }
         
         protected void Send<T>(string memberName, T value)

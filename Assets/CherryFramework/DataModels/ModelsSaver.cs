@@ -19,26 +19,26 @@ namespace CherryFramework.DataModels
         protected override void OnDestroy()
         {
             if (onDestroyThis)
-                _modelService.SaveAllModels();
+                _modelService.DataStorage.SaveAllModels();
             base.OnDestroy();
         }
 
         private void OnApplicationFocus(bool hasFocus)
         {
             if (!hasFocus && onApplicationPause)
-                _modelService.SaveAllModels();
+                _modelService.DataStorage.SaveAllModels();
         }
 
         private void OnApplicationPause(bool pauseStatus)
         {
             if (pauseStatus && onApplicationPause)
-                _modelService.SaveAllModels();
+                _modelService.DataStorage.SaveAllModels();
         }
 
         private void OnApplicationQuit()
         {
             if (onApplicationQuit)
-                _modelService.SaveAllModels();
+                _modelService.DataStorage.SaveAllModels();
         }
     }
 }
