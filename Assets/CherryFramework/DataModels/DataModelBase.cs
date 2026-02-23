@@ -14,9 +14,10 @@ namespace CherryFramework.DataModels
         private bool _debugMode;
         private bool _bindingsOff;
         private bool _ready;
-
+        
         [JsonIgnore] public string Id { get; private set; } = "";
         [JsonIgnore] public string SlotId { get; private set; } = "";
+
         
         protected Dictionary<string, Delegate> Getters = new ();
         protected Dictionary<string, Delegate> Setters = new ();

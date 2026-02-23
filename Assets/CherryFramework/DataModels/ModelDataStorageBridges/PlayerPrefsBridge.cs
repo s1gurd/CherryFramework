@@ -108,6 +108,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 				return;
 			}
 			
+
 			var id = string.IsNullOrEmpty(model.Id) ? SingletonPrefix : model.Id;
 			var key = DataUtils.CreateKey(id, model.SlotId, model.GetType().ToString());
 			var json = JsonConvert.SerializeObject(model);
