@@ -5,6 +5,7 @@ using CherryFramework.StateService;
 using DG.Tweening;
 using GeneratedDataModels;
 using Sample.Scripts.Settings;
+using UnityEngine;
 
 public class GameManager : BehaviourBase
 {
@@ -32,7 +33,7 @@ public class GameManager : BehaviourBase
                 });
             }
         });
-        _modelService.LinkModelToStorage(_gameState);
+        _modelService.DataStorage.LinkModelToStorage(_gameState);
         
         StartGame();
     }

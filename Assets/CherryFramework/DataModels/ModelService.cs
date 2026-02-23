@@ -7,15 +7,14 @@ namespace CherryFramework.DataModels
 {
 	public class ModelService : IDisposable
 	{
-		private readonly Dictionary<Type, DataModelBase> _singletonModels = new();
-		private readonly HashSet<(DataModelBase model, string id)> _playerPrefsModels = new();
+		public readonly IModelDataStorageBridge DataStorage;
 		
-		private IModelDataStorageBridge _dataStorageBridge;
+		private readonly Dictionary<Type, DataModelBase> _singletonModels = new();
 		
 		public ModelService(IModelDataStorageBridge bridge, bool debug)
 		{
-			_dataStorageBridge = bridge;
-			_dataStorageBridge.Setup(_singletonModels, _playerPrefsModels, debug);
+			DataStorage = bridge;
+			DataStorage.Setup(_singletonModels, debug);
 		}
 		
         public T GetOrCreateSingletonModel<T>() where T : DataModelBase, new()
@@ -41,45 +40,10 @@ namespace CherryFramework.DataModels
 	        _singletonModels.Add(typeof(T), source);
 	        return true;
         }
-
-        public void DeleteModelFromStorage(DataModelBase model, string id = "")
-        {
-	        _dataStorageBridge.DeleteModelFromStorage(model, id);
-        }
         
-        public bool ModelExistsInStorage(DataModelBase model, string id = "")
-        {
-	        return _dataStorageBridge.ModelExistsInStorage(model, id);
-        }
-
-        public bool ModelExistsInStorage<T>(string id = "")
-        {
-	        return _dataStorageBridge.ModelExistsInStorage<T>(id);
-        }
-
-		public void LinkModelToStorage(DataModelBase model, string id = "", bool ready = true)
-		{
-			_dataStorageBridge.LinkModelToStorage(model, id, ready);
-		}
-
-		public void SaveModelToStorage(DataModelBase model)
-		{
-			_dataStorageBridge.SaveModelToStorage(model);
-		}
-
-		public void SaveAllModelsById(string id)
-		{
-			_dataStorageBridge.SaveAllModelsById(id);
-		}
-
-		public void SaveAllModels()
-		{
-			_dataStorageBridge.SaveAllModels();
-		}
-
 		public void Dispose()
 		{
-			SaveAllModels();
+			DataStorage.SaveAllModels();
 		}
 	}
 }

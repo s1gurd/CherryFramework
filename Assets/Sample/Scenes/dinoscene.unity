@@ -362,7 +362,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5baf46e604414054bda712e1f63a6aec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _gameSettings: {fileID: 11400000, guid: 63b3111e35760a9498143d3214aac9a0, type: 2}
+  gameSettings: {fileID: 11400000, guid: 63b3111e35760a9498143d3214aac9a0, type: 2}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -597,8 +597,6 @@ MonoBehaviour:
   sprites:
   - {fileID: 21300000, guid: 35fc7b77def46f446b1e1e64e5941111, type: 3}
   - {fileID: 21300000, guid: 25c43fae590d5344492dd8bfdde79775, type: 3}
-  spriteRenderer: {fileID: 0}
-  frame: 0
 --- !u!1 &1087192227
 GameObject:
   m_ObjectHideFlags: 0

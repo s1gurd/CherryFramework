@@ -14,8 +14,10 @@ namespace CherryFramework.SaveGameManager
     { 
         protected bool DebugMessages = false;
         
-        private IPlayerPrefs _playerPrefs;
-        public HashSet<PersistentObject> PersistentObjects { get; } =  new ();
+        private readonly IPlayerPrefs _playerPrefs;
+        private readonly Dictionary<IGameSaveData, PersistentObject> _persistentObjects =  new ();
+
+        public string SlotId { get; private set; } = "";
 
         protected SaveGameManager(IPlayerPrefs playerPrefs, bool debugMessages)
         {
@@ -23,7 +25,7 @@ namespace CherryFramework.SaveGameManager
             DebugMessages = debugMessages;
         }
 
-        public virtual void LoadData<T>(T component, bool reset = false) where T : MonoBehaviour, IGameSaveData
+        public virtual void Register<T>(T component) where T : MonoBehaviour, IGameSaveData
         {
             var persistentObj = component.gameObject.GetComponent<PersistentObject>();
             if (!persistentObj)
@@ -32,10 +34,28 @@ namespace CherryFramework.SaveGameManager
                 return;
             }
 
+            if (_persistentObjects.ContainsKey(component))
+            {
+                Debug.LogError($"[Save Game Manager] Tried to register component {component}, which is already registered!");
+                return;
+            }
+            
+            _persistentObjects.Add(component, persistentObj);
+            persistentObj.RegisterComponent(component);
+        }
+
+        public virtual void LoadData<T>(T component, bool reset = false) where T : MonoBehaviour, IGameSaveData
+        {
+            if (!_persistentObjects.TryGetValue(component, out var persistentObj))
+            {
+                Debug.LogError($"[Save Game Manager] Tried to load data for component {component}, but it is not registered!");
+                return;
+            }
+            
             var id = persistentObj.GetObjectId();
             if (id == null) return;
             
-            var key = DataUtils.CreateKey(id, component.GetType().ToString());
+            var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
             if (DebugMessages) Debug.Log($"[Save Game Manager] Linking component {component.GetType()} with key  {key}");
             
@@ -52,9 +72,6 @@ namespace CherryFramework.SaveGameManager
                 return;
             }
             
-            PersistentObjects.Add(persistentObj);
-            persistentObj.RegisterComponent(component);
-            
             reset &=  component is not IIgnoreReset;
             reset |= persistentObj.ForceReset;
 
@@ -62,7 +79,7 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(field.FieldType))
                 {
-                    Debug.LogError($"[Save Game Manager] \"{field.FieldType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.LinkModelToStorage)} instead.");
+                    Debug.LogError($"[Save Game Manager] \"{field.FieldType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.LinkModelToStorage)} instead.");
                 }
             }
 
@@ -70,7 +87,7 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(prop.PropertyType))
                 {
-                    Debug.LogError($"[Save Game Manager] \"{prop.PropertyType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.LinkModelToStorage)} instead.");
+                    Debug.LogError($"[Save Game Manager] \"{prop.PropertyType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.LinkModelToStorage)} instead.");
                 }
             }
             
@@ -109,9 +126,13 @@ namespace CherryFramework.SaveGameManager
             }
         }
 
-        public virtual void SaveData(KeyValuePair<IGameSaveData, string> source)
+        public virtual void SaveData(IGameSaveData component)
         {
-            var component = source.Key;
+            if (!_persistentObjects.TryGetValue(component, out var persistentObj))
+            {
+                Debug.LogError($"[Save Game Manager] Tried to save data for component {component}, but it is not registered!");
+                return;
+            }
             
             var props = component.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
@@ -126,7 +147,8 @@ namespace CherryFramework.SaveGameManager
                 return;
             }
 
-            var key = DataUtils.CreateKey(source.Value, component.GetType().ToString());
+            var id = _persistentObjects[component].GetObjectId();
+            var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
             var saveObject = new JObject();
             
@@ -165,10 +187,15 @@ namespace CherryFramework.SaveGameManager
 
         public void SaveAllData()
         {
-            foreach (var persistentObj in PersistentObjects)
+            foreach (var persistentObj in _persistentObjects.Values)
             {
                 persistentObj.SaveData();
             }
+        }
+
+        public void SetCurrentSlot(string slotId)
+        {
+            SlotId = slotId;
         }
     }
 }

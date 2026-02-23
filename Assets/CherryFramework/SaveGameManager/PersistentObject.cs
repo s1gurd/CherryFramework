@@ -36,7 +36,7 @@ namespace CherryFramework.SaveGameManager
         [SaveGameData] private float[] _position =  new float[3];
         [SaveGameData] private float[] _rotation =  new float[4];
 
-        private readonly Dictionary<IGameSaveData, string> _persistentComponents = new();
+        private readonly HashSet<IGameSaveData> _persistentComponents = new();
         
         private DateTime _lastSaveTime;
 
@@ -46,6 +46,7 @@ namespace CherryFramework.SaveGameManager
             {
                 _position = MathUtils.Vector3ToArray(transform.position);
                 _rotation = MathUtils.QuaternionToArray(transform.rotation);
+                _saveGame.Register(this);
                 _saveGame.LoadData(this);
                 var anim = GetComponent<Animator>();
                 if (anim && anim.applyRootMotion)
@@ -111,7 +112,7 @@ namespace CherryFramework.SaveGameManager
         
         public void RegisterComponent(IGameSaveData component)
         {
-            _persistentComponents[component] = GetObjectId();
+            _persistentComponents.Add(component);
         }
 
         public void SaveData()

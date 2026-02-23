@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8396b88ff6949fda1232529af9b7461, type: 3}
   m_Name: DinoGameSettings
   m_EditorClassIdentifier: 
-  initialGameSpeed: 5
+  initialGameSpeed: 3
   speedIncreasePeriod: 5
   gameSpeedIncrease: 0.5
+  gravity: 19.6
+  jumpForce: 8
