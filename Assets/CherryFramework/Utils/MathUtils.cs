@@ -13,6 +13,16 @@ namespace CherryFramework.Utils
         public static Vector2 RotateByDegrees(this Vector2 v, float delta) => 
             v.RotateByRads(delta * Mathf.Deg2Rad);
 
+        public static Vector2 ArrayToVector2(float[] array)
+        {
+            return new Vector2(array[0], array[1]);
+        }
+
+        public static float[] Vector2ToArray(Vector2 v)
+        {
+            return new float[] { v.x, v.y };
+        }
+        
         public static Vector3 ArrayToVector3(float[] array)
         {
             return new Vector3(array[0], array[1], array[2]);

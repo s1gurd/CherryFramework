@@ -6,7 +6,6 @@ using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
 using DG.Tweening;
 using TriInspector;
-using MathUtils = CherryFramework.Utils.MathUtils;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -16,6 +15,7 @@ using System.Linq;
 
 namespace CherryFramework.SaveGameManager
 {
+    [DisallowMultipleComponent]
     public class PersistentObject : BehaviourBase, IGameSaveData
     {
         private const string ScenePrefix = "SceneId:";
@@ -32,33 +32,21 @@ namespace CherryFramework.SaveGameManager
         
         [Inject] private readonly SaveGameManager _saveGame;
         [Inject] private readonly ModelService _modelService;
-
-        [SaveGameData] private float[] _position =  new float[3];
-        [SaveGameData] private float[] _rotation =  new float[4];
-
-        private readonly HashSet<IGameSaveData> _persistentComponents = new();
+        
+        [SaveGameData] private Vector3 _position;
+        [SaveGameData] private Quaternion _rotation;
+        [SaveGameData] private Vector3 _scale;
 
         public bool ForceReset => forceReset;
-        public int? CustomSuffix { get; set; }
+        public int? CustomSuffix { get; private set; }
 
         private void Start()
         {
             if (saveTransform)
             {
-                _position = MathUtils.Vector3ToArray(transform.position);
-                _rotation = MathUtils.QuaternionToArray(transform.rotation);
                 _saveGame.Register(this);
                 _saveGame.LoadData(this);
-                var anim = GetComponent<Animator>();
-                if (anim && anim.applyRootMotion)
-                {
-                    anim.applyRootMotion = false;
-                    var sequence = DOTween.Sequence();
-                    sequence.AppendInterval(0.2f);
-                    sequence.AppendCallback(() => anim.applyRootMotion = true);
-                }
-                transform.position = MathUtils.ArrayToVector3(_position);
-                transform.rotation = MathUtils.ArrayToQuaternion(_rotation);
+                
             }
         }
 
@@ -98,21 +86,68 @@ namespace CherryFramework.SaveGameManager
                 return sb.ToString();
             }
         }
-        
-        public void RegisterComponent(IGameSaveData component)
+
+        public void SetCustomSuffix(int suffix)
         {
-            _persistentComponents.Add(component);
+            if (spawnableObject)
+            {
+                CustomSuffix = suffix;
+            }
+            else
+            {
+                Debug.LogError($"[PersistentObject] Custom Suffix is only allowed for Spawnable objects!", gameObject);
+            }
         }
 
-        public void SaveData()
+        public void OnBeforeLoad()
         {
-            _position = MathUtils.Vector3ToArray(transform.position);
-            _rotation = MathUtils.QuaternionToArray(transform.rotation);
-            
-            foreach (var comp in _persistentComponents)
+            _position = transform.position;
+            _rotation = transform.rotation;
+            _scale = transform.localScale;
+        }
+
+        public void OnAfterLoad()
+        {
+            var anim = GetComponent<Animator>();
+            if (anim && anim.applyRootMotion)
             {
-                _saveGame.SaveData(comp);
+                anim.applyRootMotion = false;
+                var sequence = DOTween.Sequence();
+                sequence.AppendInterval(0.2f);
+                sequence.AppendCallback(() => anim.applyRootMotion = true);
             }
+
+            transform.localScale = _scale;
+                
+            var rb = GetComponent<Rigidbody>();
+            if (rb)
+            {
+                rb.Move(_position, _rotation);
+            }
+            else
+            {
+                var cc = GetComponent<CharacterController>();
+                var ccEnabled = false;
+                if (cc)
+                {
+                    ccEnabled = cc.enabled;
+                    cc.enabled = false;
+                }
+                
+                transform.position = _position;
+                transform.rotation = _rotation;
+                if (cc && ccEnabled)
+                {
+                    cc.enabled = true;
+                }
+            }
+        }
+
+        public void OnBeforeSave()
+        {
+            _position = transform.position;
+            _rotation = transform.rotation;
+            _scale = transform.localScale;
         }
 
 #if UNITY_EDITOR
@@ -145,7 +180,7 @@ namespace CherryFramework.SaveGameManager
                 while (true)
                 {
                     newGuid = Guid.NewGuid().ToString();
-                    if (!objs.Any(o => o.guid.Equals(newGuid) && o != this)) break;
+                    if (!objs.Any(o => o.guid != null && o.guid.Equals(newGuid) && o != this)) break;
                 }
                 guidProperty.stringValue = newGuid;
             }

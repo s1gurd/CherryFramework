@@ -47,13 +47,13 @@ namespace Sample.Scripts
             _saveGame.LoadData(this);
 
             // Respawn all objects from last session, including inactive
-            // Of course, fell free to make this more optimal way
+            // Of course, feel free to make this in a more fashionable way
             
             for (var index = 0; index < _spawnedObjects.Count; index++)
             {
                 var objIndex = _spawnedObjects[index];
                 var newObj = _objectPool.Get(_gameSettings.spawnObjects[objIndex].source);
-                newObj.CustomSuffix = index;
+                newObj.SetCustomSuffix(index);
             }
         }
 
@@ -74,7 +74,7 @@ namespace Sample.Scripts
             // We ensure that _spawnedObjects contains only objects in scene. Objects reused from pool will have value in CustomSuffix
             if (newObj.CustomSuffix == null)
             {
-                newObj.CustomSuffix = _spawnedObjects.Count;
+                newObj.SetCustomSuffix(_spawnedObjects.Count);
                 _spawnedObjects.Add(randomIndex);
             }
             

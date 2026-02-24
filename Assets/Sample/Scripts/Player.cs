@@ -1,25 +1,31 @@
 using CherryFramework.BaseClasses;
 using CherryFramework.DependencyManager;
+using CherryFramework.SaveGameManager;
 using CherryFramework.TickDispatcher;
 using Sample.Scripts.Settings;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class Player : BehaviourBase, IFixedTickable
+public class Player : BehaviourBase, IFixedTickable, IGameSaveData
 {
     [Inject] private readonly GameSettings _gameSettings;
     [Inject] private readonly Ticker _ticker;
     [Inject] private readonly InputSystem_Actions _inputSystem;
+    [Inject] private readonly SaveGameManager _saveGameManager;
     
     private CharacterController _character;
-    private Vector3 _direction;
-    private JumpState _jumpState;
+    [SaveGameData] private Vector3 _direction;
+    [SaveGameData] private JumpState _jumpState;
 
     private void Start()
     {
         _character = GetComponent<CharacterController>();
         _inputSystem.Player.Jump.started += OnJump;
         _jumpState = JumpState.Idle;
+        
+        _saveGameManager.Register(this);
+        _saveGameManager.LoadData(this);
+        
         _ticker.Register(this);
     }
 

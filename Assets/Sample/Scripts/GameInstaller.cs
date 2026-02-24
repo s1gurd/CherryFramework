@@ -21,9 +21,9 @@ namespace Sample.Scripts
             // Here we bind some objects for injection in dependent classes using [Inject] attribute
             // Notice that binding can be called by multiple ways - generic or by instance
             BindAsSingleton<Ticker>();
-            BindAsSingleton<StateService>();
+            BindAsSingleton(new StateService(false));
             BindAsSingleton(new SaveGameManager(new PlayerPrefsData(), true));
-            BindAsSingleton(new ModelService(new PlayerPrefsBridge(new PlayerPrefsData()), true));
+            BindAsSingleton(new ModelService(new PlayerPrefsBridge<PlayerPrefsData>(), true));
             BindAsSingleton(new InputSystem_Actions());
             BindAsSingleton(gameSettings);
             BindAsSingleton(Camera.main);

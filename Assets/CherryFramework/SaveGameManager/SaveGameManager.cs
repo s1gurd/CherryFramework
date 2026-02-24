@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using CherryFramework.DataModels;
@@ -15,9 +17,11 @@ namespace CherryFramework.SaveGameManager
         protected bool DebugMessages = false;
         
         private readonly IPlayerPrefs _playerPrefs;
-        private readonly Dictionary<IGameSaveData, PersistentObject> _persistentObjects =  new ();
+        private readonly Dictionary<IGameSaveData, PersistentObject> _persistentComponents =  new ();
 
         public string SlotId { get; private set; } = "";
+        public IGameSaveData[] RegisteredComponents => _persistentComponents.Keys.ToArray();
+        public PersistentObject[]  RegisteredObjects => _persistentComponents.Values.Distinct().ToArray();
 
         public SaveGameManager(IPlayerPrefs playerPrefs, bool debugMessages = false)
         {
@@ -25,35 +29,39 @@ namespace CherryFramework.SaveGameManager
             DebugMessages = debugMessages;
         }
 
-        public virtual void Register<T>(T component) where T : MonoBehaviour, IGameSaveData
+        public virtual bool Register<T>(T component) where T : MonoBehaviour, IGameSaveData
         {
             var persistentObj = component.gameObject.GetComponent<PersistentObject>();
             if (!persistentObj)
             {
                 if (DebugMessages) Debug.Log($"[Save Game Manager] Tried to get save game data for component {component}, whose gameobject does not have PersistentObject component!", component);
-                return;
+                return false;
             }
 
-            if (_persistentObjects.ContainsKey(component))
+            if (_persistentComponents.ContainsKey(component))
             {
                 Debug.LogError($"[Save Game Manager] Tried to register component {component}, which is already registered!");
-                return;
+                return false;
             }
             
-            _persistentObjects.Add(component, persistentObj);
-            persistentObj.RegisterComponent(component);
+            _persistentComponents.Add(component, persistentObj);
+            
+            return true;
         }
 
-        public virtual void LoadData<T>(T component) where T : MonoBehaviour, IGameSaveData
+        public virtual bool LoadData<T>(T component) where T : MonoBehaviour, IGameSaveData
         {
-            if (!_persistentObjects.TryGetValue(component, out var persistentObj))
+            if (!_persistentComponents.TryGetValue(component, out var persistentObj))
             {
                 Debug.LogError($"[Save Game Manager] Tried to load data for component {component}, but it is not registered!");
-                return;
+                return false;
             }
             
+            component.OnBeforeLoad();
+            
             var id = persistentObj.GetObjectId();
-            if (id == null) return;
+            if (id == null) 
+                return false;
             
             var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
@@ -67,7 +75,7 @@ namespace CherryFramework.SaveGameManager
             if (!props.Any() && !fields.Any())
             {
                 Debug.LogError($"[Save Game Manager] No data found to link in component {component}");
-                return;
+                return false;
             }
 
             foreach (var field in fields)
@@ -89,7 +97,7 @@ namespace CherryFramework.SaveGameManager
             if (!_playerPrefs.HasKey(key))
             {
                 if (DebugMessages) Debug.Log($"[Save Game Manager] Not found data for component {component.GetType()} with key {key}");
-                return;
+                return false;
             }
             
             var str = _playerPrefs.GetString(key);
@@ -123,16 +131,19 @@ namespace CherryFramework.SaveGameManager
                     }
                 }
             }
+            component.OnAfterLoad();
+            return true;
         }
 
         public virtual void SaveData(IGameSaveData component)
         {
-            if (!_persistentObjects.TryGetValue(component, out var persistentObj))
+            if (!_persistentComponents.TryGetValue(component, out var persistentObj))
             {
                 Debug.LogError($"[Save Game Manager] Tried to save data for component {component}, but it is not registered!");
                 return;
             }
             
+            component.OnBeforeSave();
             var props = component.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
                     p.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any()).ToList();
@@ -146,11 +157,18 @@ namespace CherryFramework.SaveGameManager
                 return;
             }
 
-            var id = _persistentObjects[component].GetObjectId();
+            var id = _persistentComponents[component].GetObjectId();
             var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
             var saveObject = new JObject();
             
+            var serializer = new JsonSerializer
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                Culture = CultureInfo.InvariantCulture,
+                DefaultValueHandling = DefaultValueHandling.Ignore
+            };
+
             foreach (var field in fields)
             {
                 if (typeof(DataModelBase).IsAssignableFrom(field.FieldType))
@@ -159,8 +177,9 @@ namespace CherryFramework.SaveGameManager
                 }
 
                 var obj = field.GetValue(component);
-
-                var token = JToken.FromObject(obj);
+                
+                var token = JToken.FromObject(obj, serializer);
+                
                 saveObject.Add(field.Name, token);
             }
             
@@ -173,47 +192,50 @@ namespace CherryFramework.SaveGameManager
                 
                 var obj = prop.GetValue(component);
                 
-                var token = JToken.FromObject(obj);
+                var token = JToken.FromObject(obj, serializer);
                 
                 saveObject.Add(prop.Name, token);
             }
             
             _playerPrefs.SetString(key, saveObject.ToString());
             _playerPrefs.Save();
+            component.OnAfterDataSave();
             
             if (DebugMessages) Debug.Log($"[Save Game Manager] Save key {key} with {saveObject}");
         }
 
         public void SaveAllData()
         {
-            foreach (var persistentObj in _persistentObjects.Values)
+            foreach (var component in _persistentComponents.Keys)
             {
-                persistentObj.SaveData();
+                SaveData(component);
             }
         }
 
-        public virtual void DeleteData<T>(T component) where T : MonoBehaviour, IGameSaveData
+        public virtual bool DeleteData<T>(T component) where T : MonoBehaviour, IGameSaveData
         {
-            if (!_persistentObjects.TryGetValue(component, out var persistentObj))
+            if (!_persistentComponents.TryGetValue(component, out var persistentObj))
             {
                 Debug.LogError(
                     $"[Save Game Manager] Tried to load data for component {component}, but it is not registered!");
-                return;
+                return false;
             }
 
             var id = persistentObj.GetObjectId();
-            if (id == null) return;
+            if (id == null) 
+                return false;
 
             var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
             if (!_playerPrefs.HasKey(key))
             {
                 if (DebugMessages) Debug.Log($"[Save Game Manager] Not found data to delete for component {component.GetType()} with key {key}");
-                return;
+                return false;
             }
             
             _playerPrefs.DeleteKey(key);
             if (DebugMessages) Debug.Log($"[Save Game Manager] Deleted data for component {component.GetType()} with key {key}");
+            return true;
         }
 
         public void SetCurrentSlot(string slotId)

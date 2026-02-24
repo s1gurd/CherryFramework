@@ -26,11 +26,13 @@ namespace CherryFramework.StateService
         private readonly List<object> _subscribersToRemove = new();
 
         private bool _updateNeeded;
-
-        public StateService()
+        private bool _debugMessages;
+        
+        public StateService(bool debugMessages)
         {
             Ticker.Register(this);
             _stateAccessor = new StateAccessor(this);
+            _debugMessages = debugMessages;
         }
 
         public void LateTick(float deltaTime)
@@ -59,6 +61,8 @@ namespace CherryFramework.StateService
             var volatileEvents = new Dictionary<string, EventBase>(_currentEvents);
             var volatileActiveStatuses = new Dictionary<string, StateStatus>(_becameActiveStatuses);
             var volatileInactiveStatuses = new Dictionary<string, StateStatus>(_becameInactiveStatuses);
+
+            var counter = 0;
                 
             foreach (var kvp in _subscriptions)
             {
@@ -67,8 +71,15 @@ namespace CherryFramework.StateService
                     var subscription = kvp.Value[index];
                     if (!subscription.Condition.Invoke(_stateAccessor)) continue;
                     subscription.Callback.Invoke();
+                    counter++;
                     if (subscription.DestroyAfterInvoke) kvp.Value.RemoveAt(index);
                 }
+            }
+
+            if (_debugMessages)
+            {
+                Debug.Log(
+                    $"[State Service] Invoked {counter} events at frame {Time.frameCount}");
             }
 
             foreach (var kvp in volatileEvents)
@@ -94,12 +105,22 @@ namespace CherryFramework.StateService
         {
             _updateNeeded = true;
             _currentEvents[key] = new PayloadEvent<T>(payload, Time.frameCount);
+            if (_debugMessages)
+            {
+                Debug.Log(
+                    $"[State Service] Emit event \"{key}\" with {typeof(T)} payload at frame {Time.frameCount}");
+            }
         }
 
         public void EmitEvent(string key)
         {
             _updateNeeded = true;
             _currentEvents[key] = new BasicEvent(Time.frameCount);
+            if (_debugMessages)
+            {
+                Debug.Log(
+                    $"[State Service] Emit event \"{key}\" at frame {Time.frameCount}");
+            }
         }
 
         public bool IsEventActive(string key)
@@ -154,6 +175,11 @@ namespace CherryFramework.StateService
             _becameActiveStatuses[key] = new StateStatus(Time.frameCount);
             _inactiveStatuses.Remove(key);
             _becameInactiveStatuses.Remove(key);
+            if (_debugMessages)
+            {
+                Debug.Log(
+                    $"[State Service] Set status \"{key}\" at frame {Time.frameCount}");
+            }
         }
         
         public void UnsetStatus(string key)
@@ -165,6 +191,11 @@ namespace CherryFramework.StateService
             _becameInactiveStatuses[key] = new StateStatus(Time.frameCount);
             _activeStatuses.Remove(key);
             _becameActiveStatuses.Remove(key);
+            if (_debugMessages)
+            {
+                Debug.Log(
+                    $"[State Service] Unset status \"{key}\" at frame {Time.frameCount}");
+            }
         }
 
         public bool IsStatusActive(string key)
@@ -207,7 +238,7 @@ namespace CherryFramework.StateService
             if (obj == null)
             {
                 Debug.LogError(
-                    "[State Container] Trying to add state subscription with callback target == NULL, which is not allowed!!!");
+                    "[State Service] Trying to add state subscription with callback target == NULL, which is not allowed!!!");
                 return null;
             }
 
