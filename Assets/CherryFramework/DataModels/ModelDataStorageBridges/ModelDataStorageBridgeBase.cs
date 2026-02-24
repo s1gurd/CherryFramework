@@ -23,22 +23,33 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 
         public virtual bool SingletonModelExistsInStorage<T1>(string slotId = "", string id = "") => true;
 
-        public virtual bool LinkModelToStorage(DataModelBase model, bool makeReady = true)
+        public virtual bool RegisterModelInStorage(DataModelBase model)
         {
             if (DataLinkedModels.Contains(model))
             {
                 if (DebugMode)
-                    Debug.Log($"[Model Service - PlayerPrefs] Tried to link model {model.GetType()} to Player Prefs but it is already linked...");
+                    Debug.Log($"[Model Service - PlayerPrefs] Tried to register model {model.GetType()} to Player Prefs but it is already linked...");
                 return false;
             }
 			
             if (string.IsNullOrEmpty(model.Id) && !SingletonModels.ContainsKey(model.GetType()))
             {
-                Debug.LogError($"[Model Service - PlayerPrefs] Got request to link model of type {model.GetType()} without ID, while model of this type is not registered as singleton!");
+                Debug.LogError($"[Model Service - PlayerPrefs] Got request to register model of type {model.GetType()} without ID, while model of this type is not registered as singleton!");
                 return false;
             }
 			
             DataLinkedModels.Add(model);
+
+            return true;
+        }
+
+        public virtual bool LoadModelData(DataModelBase model, bool makeReady = true)
+        {
+            if (!DataLinkedModels.Contains(model))
+            {
+                Debug.LogError($"[Model Service - PlayerPrefs] Tried to save model of type {model.GetType()}, but it is not registered!");
+                return false;
+            }
 
             return true;
         }
@@ -97,7 +108,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
             return DataLinkedModels.ToArray();
         }
 
-        public virtual void UnlinkModelFromStorage(DataModelBase model)
+        public virtual void UnregisterModelFromStorage(DataModelBase model)
         {
             DataLinkedModels.Remove(model);
         }

@@ -29,27 +29,40 @@ namespace CherryFramework.SaveGameManager
             DebugMessages = debugMessages;
         }
 
-        public virtual bool Register<T>(T component) where T : MonoBehaviour, IGameSaveData
+        public virtual bool Register<T>(T component, PersistentObject persistentObj = null) where T : IGameSaveData
         {
-            var persistentObj = component.gameObject.GetComponent<PersistentObject>();
             if (!persistentObj)
             {
-                if (DebugMessages) Debug.Log($"[Save Game Manager] Tried to get save game data for component {component}, whose gameobject does not have PersistentObject component!", component);
+                if (component is MonoBehaviour monoBehaviour)
+                {
+                    persistentObj = monoBehaviour.gameObject.GetComponent<PersistentObject>();
+                    
+                    if (!persistentObj)
+                    {
+                        Debug.LogError(
+                            $"[Save Game Manager] Tried register component {component}, whose game object does not have PersistentObject component!",
+                            monoBehaviour);
+                        return false;
+                    }
+                }
+            }
+             
+            if (!persistentObj)
+            {
+                Debug.LogError($"[Save Game Manager] Tried register component {component}, which is not MonoBehaviour and PersistentObject is NULL");
                 return false;
             }
 
-            if (_persistentComponents.ContainsKey(component))
+            if (!_persistentComponents.TryAdd(component, persistentObj))
             {
                 Debug.LogError($"[Save Game Manager] Tried to register component {component}, which is already registered!");
                 return false;
             }
-            
-            _persistentComponents.Add(component, persistentObj);
-            
+
             return true;
         }
 
-        public virtual bool LoadData<T>(T component) where T : MonoBehaviour, IGameSaveData
+        public virtual bool LoadData<T>(T component) where T : IGameSaveData
         {
             if (!_persistentComponents.TryGetValue(component, out var persistentObj))
             {
@@ -82,7 +95,7 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(field.FieldType))
                 {
-                    Debug.LogError($"[Save Game Manager] \"{field.FieldType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.LinkModelToStorage)} instead.");
+                    Debug.LogError($"[Save Game Manager] \"{field.FieldType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.RegisterModelInStorage)} instead.");
                 }
             }
 
@@ -90,7 +103,7 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(prop.PropertyType))
                 {
-                    Debug.LogError($"[Save Game Manager] \"{prop.PropertyType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.LinkModelToStorage)} instead.");
+                    Debug.LogError($"[Save Game Manager] \"{prop.PropertyType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.RegisterModelInStorage)} instead.");
                 }
             }
             
@@ -144,9 +157,10 @@ namespace CherryFramework.SaveGameManager
             }
             
             component.OnBeforeSave();
+            
             var props = component.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
-                    p.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any()).ToList();
+                    p.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any() && p.CanWrite).ToList();
             var fields = component.GetType()
                 .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(f =>
                     f.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any()).ToList();
@@ -199,9 +213,9 @@ namespace CherryFramework.SaveGameManager
             
             _playerPrefs.SetString(key, saveObject.ToString());
             _playerPrefs.Save();
-            component.OnAfterDataSave();
+            component.OnAfterSave();
             
-            if (DebugMessages) Debug.Log($"[Save Game Manager] Save key {key} with {saveObject}");
+            if (DebugMessages) Debug.Log($"[Save Game Manager] Saved key {key} with {saveObject}");
         }
 
         public void SaveAllData()
@@ -212,7 +226,7 @@ namespace CherryFramework.SaveGameManager
             }
         }
 
-        public virtual bool DeleteData<T>(T component) where T : MonoBehaviour, IGameSaveData
+        public virtual bool DeleteData<T>(T component) where T : IGameSaveData
         {
             if (!_persistentComponents.TryGetValue(component, out var persistentObj))
             {

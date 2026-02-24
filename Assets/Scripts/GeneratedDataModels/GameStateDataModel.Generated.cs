@@ -58,7 +58,7 @@ namespace GeneratedDataModels
         [JsonIgnore]  
         public Accessor<System.Single> GameSpeedAccessor;
 
-        [Newtonsoft.Json.JsonIgnoreAttribute()]public System.Boolean PlayerDead
+        public System.Boolean PlayerDead
         {
             get => _template.PlayerDead;
             set { _template.PlayerDead = value;

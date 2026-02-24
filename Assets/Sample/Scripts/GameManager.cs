@@ -36,7 +36,8 @@ public class GameManager : BehaviourBase
                 });
             }
         });
-        _modelService.DataStorage.LinkModelToStorage(_gameState);
+        _modelService.DataStorage.RegisterModelInStorage(_gameState);
+        _modelService.DataStorage.LoadModelData(_gameState);
         
         StartGame();
     }

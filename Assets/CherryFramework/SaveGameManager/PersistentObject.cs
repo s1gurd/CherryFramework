@@ -101,9 +101,7 @@ namespace CherryFramework.SaveGameManager
 
         public void OnBeforeLoad()
         {
-            _position = transform.position;
-            _rotation = transform.rotation;
-            _scale = transform.localScale;
+            StoreTransform();
         }
 
         public void OnAfterLoad()
@@ -123,27 +121,32 @@ namespace CherryFramework.SaveGameManager
             if (rb)
             {
                 rb.Move(_position, _rotation);
+                return;
             }
-            else
+
+            var cc = GetComponent<CharacterController>();
+            var ccEnabled = false;
+            if (cc && cc.enabled)
             {
-                var cc = GetComponent<CharacterController>();
-                var ccEnabled = false;
-                if (cc)
-                {
-                    ccEnabled = cc.enabled;
-                    cc.enabled = false;
-                }
-                
-                transform.position = _position;
-                transform.rotation = _rotation;
-                if (cc && ccEnabled)
-                {
-                    cc.enabled = true;
-                }
+                ccEnabled = true;
+                cc.enabled = false;
+            }
+
+            transform.position = _position;
+            transform.rotation = _rotation;
+            
+            if (cc && ccEnabled)
+            {
+                cc.enabled = true;
             }
         }
 
         public void OnBeforeSave()
+        {
+            StoreTransform();
+        }
+
+        private void StoreTransform()
         {
             _position = transform.position;
             _rotation = transform.rotation;

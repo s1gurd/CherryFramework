@@ -25,23 +25,21 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 	        return _playerPrefs.HasKey(key);
         }
 
-		public override bool LinkModelToStorage(DataModelBase model, bool makeReady = true)
+        public override bool LoadModelData(DataModelBase model, bool makeReady = true)
 		{
-			if (!base.LinkModelToStorage(model, makeReady))
+			if (!base.LoadModelData(model, makeReady))
 				return false;
 			
 			var id = string.IsNullOrEmpty(model.Id) ? SingletonPrefix : model.Id;
 			var key = DataUtils.CreateKey(id, model.SlotId, model.GetType().ToString());
-			
-			if (DebugMode)
-				Debug.Log($"[Model Service - PlayerPrefs] Linking model {model.GetType()} to Player Prefs with key {key}...");
 
 			var result = false;
+			
 			if (_playerPrefs.HasKey(key))
 			{
 				var json = _playerPrefs.GetString(key);
 				if (DebugMode)
-					Debug.Log($"[Model Service - PlayerPrefs] Got model by key: {key} from PlayerPrefs: {json}");
+					Debug.Log($"[Model Service - PlayerPrefs] Loaded model by key: {key} from PlayerPrefs: {json}");
 				JsonConvert.PopulateObject(json, model);
 				result = true;
 			}

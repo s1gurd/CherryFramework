@@ -138,10 +138,10 @@ namespace CherryFramework.DataModels
             const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
             var insType = instance.GetType();
-            var fromProps = insType.GetProperties(bindingFlags).ToDictionary(x => x.Name);
+            var fromProps = insType.GetProperties(bindingFlags).Where(p => p.CanWrite).ToDictionary(x => x.Name);
             var fromFields = insType.GetFields(bindingFlags).ToDictionary(x => x.Name);
             
-            foreach (var thisProp in GetType().GetProperties(bindingFlags))
+            foreach (var thisProp in GetType().GetProperties(bindingFlags).Where(p => p.CanWrite))
             {
                 if (fromProps.TryGetValue(thisProp.Name, out var fromProp) && thisProp.PropertyType == fromProp.PropertyType)
                     thisProp.SetValue(this, fromProp.GetValue(instance));

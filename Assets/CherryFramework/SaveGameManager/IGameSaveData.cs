@@ -7,6 +7,6 @@ namespace CherryFramework.SaveGameManager
         void OnBeforeLoad() { }
         void OnAfterLoad() { }
         void OnBeforeSave() { }
-        void OnAfterDataSave() { }
+        void OnAfterSave() { }
     }
 }

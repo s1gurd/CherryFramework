@@ -130,7 +130,7 @@ namespace CherryFramework.DependencyManager
             var fields = target.GetType().GetFields(flags)
                 .Where(f => f.GetCustomAttributes(typeof(InjectAttribute)).Any());
             var props = target.GetType().GetProperties(flags)
-                .Where(f => f.GetCustomAttributes(typeof(InjectAttribute)).Any());
+                .Where(p => p.GetCustomAttributes(typeof(InjectAttribute)).Any() && p.CanWrite);
 
             foreach (var field in fields)
             {
