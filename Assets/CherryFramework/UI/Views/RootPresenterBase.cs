@@ -1,7 +1,7 @@
 using CherryFramework.UI.InteractiveElements.Presenters;
 using UnityEngine;
 
-namespace CherryFramework.UI.ViewService
+namespace CherryFramework.UI.Views
 {
     public class RootPresenterBase : PresenterBase
     {
@@ -10,9 +10,11 @@ namespace CherryFramework.UI.ViewService
     
         public PresenterLoadingBase LoadingScreen => loadingScreen;
         public PresenterErrorBase ErrorScreen => errorScreen;
-    
-        protected virtual void Start()
+
+        protected override void OnEnable()
         {
+            base.OnEnable();
+            
             if (loadingScreen != null)
             {
                 childPresenters.Add(loadingScreen);

@@ -4,6 +4,7 @@ using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.StateService;
 using CherryFramework.TickDispatcher;
+using CherryFramework.UI.Views;
 using CherryFramework.Utils.PlayerPrefsWrapper;
 using Sample.Scripts.Settings;
 using UnityEngine;
@@ -15,6 +16,7 @@ namespace Sample.Scripts
     public class GameInstaller : InstallerBehaviourBase
     {
         [SerializeField] private GameSettings gameSettings;
+        [SerializeField] private RootPresenterBase uiRoot;
         
         protected override void Install()
         {
@@ -27,6 +29,7 @@ namespace Sample.Scripts
             BindAsSingleton(new InputSystem_Actions());
             BindAsSingleton(gameSettings);
             BindAsSingleton(Camera.main);
+            BindAsSingleton(new ViewService(uiRoot));
         }
     }
 }

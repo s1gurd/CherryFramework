@@ -156,7 +156,7 @@ namespace CherryFramework.SaveGameManager
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            if (gameObject.scene.buildIndex != -1)
+            if (gameObject.scene.IsValid())
             {
                 FillGuid();
             }

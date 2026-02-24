@@ -4,15 +4,13 @@ using UnityEngine;
 
 namespace CherryFramework.UI.UiAnimation
 {
-    [RequireComponent(typeof(RectTransform))]
     public abstract class UiAnimationBase : MonoBehaviour
     {
-        [SerializeField] private List<RectTransform> targets = new();
         [SerializeField] protected float duration = 0.3f;
         [SerializeField] protected Ease showEasing = Ease.OutQuad;
         [SerializeField] protected Ease hideEasing = Ease.OutQuad;
 
-        protected List<RectTransform> Targets => targets.Count > 0 ? targets : new List<RectTransform> { (RectTransform)transform };
+        protected RectTransform Target { get; private set; }
 
         protected Sequence MainSequence;
         
@@ -23,11 +21,13 @@ namespace CherryFramework.UI.UiAnimation
             if (Inited)
                 return;
             
+            Target = GetComponent<RectTransform>();
+            
             Inited = true;
             OnInitialize();
         }
-        
-        protected virtual void OnInitialize(){}
+
+        protected abstract void OnInitialize();
 
         protected virtual void OnEnable() => Initialize();
 

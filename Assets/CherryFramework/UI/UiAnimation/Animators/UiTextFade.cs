@@ -1,28 +1,26 @@
 ﻿using System.Collections.Generic;
 using DG.Tweening;
 using TMPro;
+using UnityEngine;
 
 namespace CherryFramework.UI.UiAnimation.Animators
 {
+    [RequireComponent(typeof(RectTransform), typeof(TMP_Text))]
     public class UiTextFade : UiAnimationBase
     {
-        private List<(TMP_Text tmpText, float baseAlpha)> _targetGroups = new();
+        private (TMP_Text tmpText, float baseAlpha) _targetGroup;
 
         protected override void OnInitialize()
         {
-            foreach (var target in Targets)
+            var txt = Target.GetComponent<TMP_Text>();
+            if (txt)
             {
-                var txt = target.GetComponent<TMP_Text>();
-                if (txt)
-                {
-                    _targetGroups.Add((txt, txt.alpha));
-                    txt.alpha = 0f;
-                }
+                _targetGroup = (txt, txt.alpha);
+                txt.alpha = 0f;
             }
-
+            
             MainSequence = DOTween.Sequence();
             ResetTargetGroups();
-            base.OnInitialize();
         }
 
         protected override void OnEnable()
@@ -33,10 +31,7 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         protected void ResetTargetGroups()
         {
-            foreach (var group in _targetGroups)
-            {
-                group.tmpText.alpha = 0f;
-            }
+            _targetGroup.tmpText.alpha = 0f;
         }
 
         public override Sequence Show(float delay = 0f)
@@ -59,14 +54,11 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         private void Fade(float delay, bool fadeIn)
         {
-            foreach (var tuple in _targetGroups)
-            {
-                MainSequence.Insert(0,
-                    fadeIn
-                        ? tuple.tmpText.DOFade(tuple.baseAlpha, duration).SetEase(showEasing)
-                        : tuple.tmpText.DOFade(0f, duration).SetEase(hideEasing));
-            }
-
+            MainSequence.Insert(0,
+                fadeIn
+                    ? _targetGroup.tmpText.DOFade(_targetGroup.baseAlpha, duration).SetEase(showEasing)
+                    : _targetGroup.tmpText.DOFade(0f, duration).SetEase(hideEasing));
+            
             if (delay > 0f)
             {
                 MainSequence.PrependInterval(delay);

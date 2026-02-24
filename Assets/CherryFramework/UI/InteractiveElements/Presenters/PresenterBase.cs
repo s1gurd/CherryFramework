@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CherryFramework.DependencyManager;
 using CherryFramework.UI.UiAnimation.Enums;
-using CherryFramework.UI.ViewService;
+using CherryFramework.UI.Views;
 using DG.Tweening;
 using TriInspector;
 using UnityEngine;
@@ -13,7 +13,7 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
     [DisallowMultipleComponent]
     public abstract class PresenterBase : InteractiveElementBase
     {
-        [Inject] protected readonly ViewService.ViewService ViewService;
+        [Inject] protected readonly ViewService ViewService;
 
         [Title("Hierarchy settings")]
         [SerializeField] private Canvas childrenContainer;
@@ -37,10 +37,7 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
             base.OnEnable();
             InitializePresenter();
         }
-
-        /// <summary>
-        /// It is called once after Awake & Before 
-        /// </summary>
+        
         public void InitializePresenter()
         {
             if (Initialized)
@@ -57,22 +54,26 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
         
         protected virtual void OnPresenterInitialized(){}
 
-        public virtual void ShowFrom(PresenterBase previous, bool skipAnimation = false)
+        public virtual Sequence ShowFrom(PresenterBase previous, bool skipAnimation = false)
         {
             this.transform.SetAsLastSibling();
             var seq = CreateSequence(animators, Purpose.Show);
             
             if (skipAnimation) 
                 seq.Complete(true);
+            
+            return seq;
         }
 
-        public virtual void HideTo(PresenterBase next, bool skipAnimation = false)
+        public virtual Sequence HideTo(PresenterBase next, bool skipAnimation = false)
         {
             var seq = CreateSequence(animators, Purpose.Hide);
             seq.AppendCallback(() => transform.SetAsFirstSibling());
             
             if (skipAnimation) 
                 seq.Complete(true);
+            
+            return seq;
         }
     }
 }

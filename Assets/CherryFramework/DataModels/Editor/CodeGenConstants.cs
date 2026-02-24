@@ -3,7 +3,7 @@ namespace CherryFramework.DataModels.Editor
     public static class CodeGenConstants
     {
         public const string FilenameEnd = ".Generated.cs";
-        public const string BasePath = "Assets/Scripts";
+        public const string BasePath = "Assets";
         public const string ModelsPathAndNamespace = "GeneratedDataModels";
 
         public const string TemplateSuffix = "Template";

@@ -6,9 +6,10 @@ using CherryFramework.BaseClasses;
 using CherryFramework.DependencyManager;
 using CherryFramework.UI.InteractiveElements.Presenters;
 using CherryFramework.Utils;
+using DG.Tweening;
 using UnityEngine;
 
-namespace CherryFramework.UI.ViewService
+namespace CherryFramework.UI.Views
 {
     public class ViewService : GeneralClassBase
     {
@@ -30,53 +31,81 @@ namespace CherryFramework.UI.ViewService
             _root = root;
         }
 
-        public void PopLoadingView()
+        public Sequence PopLoadingView()
         {
-            PopView(_loadingScreen);
+            var seq = PopView(_loadingScreen, out var newLoading);
+            _loadingScreen = newLoading as PresenterLoadingBase;
+            return seq;
         }
 
-        public void PopErrorView(string title, string message)
+        public Sequence PopErrorView(string title, string message)
         {
-            PopView(_errorScreen);
-            _errorScreen.SetError(title, message);
+            var seq = PopView(_errorScreen, out var newError);
+            _errorScreen = newError as PresenterErrorBase;
+            _errorScreen?.SetError(title, message);
+            return seq;
         }
 
-        public T PopView<T>(PresenterBase mountingPoint = null, bool skipAnimation = false) where T : PresenterBase
+        public Sequence PopView<T>(PresenterBase mountingPoint = null,
+            bool skipAnimation = false) where T : PresenterBase
         {
-            return PopView(typeof(T), mountingPoint, skipAnimation) as T;
+            return PopView<T>(out _, mountingPoint, skipAnimation);
         }
 
-        public PresenterBase PopView(string typeString, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public Sequence PopView<T>(out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false) where T : PresenterBase
         {
+            return PopView(typeof(T), out newView, mountingPoint, skipAnimation);
+        }
+
+        public Sequence PopView(string typeString, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        {
+            return PopView(typeString, out _, mountingPoint, skipAnimation);
+        }
+        
+        public Sequence PopView(string typeString, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        {
+            newView = null;
             var type = ViewUtils.GetPresenterType(typeString);
             if (type == null)
             {
                 Debug.LogError($"[View Service] View of type: {typeString} not found! Aborting...");
-                return null;
+                return DOTween.Sequence();;
             }
 
-            return PopView(type, mountingPoint, skipAnimation);
+            return PopView(type, out newView, mountingPoint, skipAnimation);
         }
 
-        public PresenterBase PopView(Type type, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public Sequence PopView(Type type, PresenterBase mountingPoint = null, bool skipAnimation = false)
         {
+            return PopView(type, out _, mountingPoint, skipAnimation);
+        }
+        
+        public Sequence PopView(Type type, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        {
+            newView = null;
+            
             var parentPresenter = mountingPoint ? mountingPoint : _root; 
 
-            var newView = parentPresenter.ChildPresenters.FirstOrDefault(p => p && p.GetType() == type);
+            var newViewSource = parentPresenter.ChildPresenters.FirstOrDefault(p => p && p.GetType() == type);
 
-            if (newView is null)
+            if (newViewSource is null)
             {
                 Debug.LogError(
                     $"[View Service] View of type: {type.Name} not registered in View Container: {parentPresenter.gameObject.name} of {mountingPoint?.gameObject.name}! Aborting...",
                     mountingPoint ? mountingPoint.gameObject : null);
-
-                return null;
+                
+                return DOTween.Sequence();;
             }
 
-            return PopView(newView, mountingPoint, skipAnimation);
+            return PopView(newViewSource, out newView, mountingPoint, skipAnimation);
         }
 
-        public virtual PresenterBase PopView(PresenterBase view, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public virtual Sequence PopView(PresenterBase view, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        {
+            return PopView(view, out _, mountingPoint, skipAnimation);
+        }
+        
+        public virtual Sequence PopView(PresenterBase view, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
         {
 
             if (_history.TryPeek(out var current) && current.Last() is IPopUp)
@@ -93,8 +122,6 @@ namespace CherryFramework.UI.ViewService
                     mountingPoint ? mountingPoint.gameObject : null);
             }
 
-            PresenterBase newView;
-
             if (view.gameObject.scene.IsValid())
             {
                 newView = view;
@@ -105,16 +132,7 @@ namespace CherryFramework.UI.ViewService
                 var index = parentPresenter.ChildPresenters.IndexOf(view);
                 newView = UnityEngine.Object.Instantiate(view, parentPresenter.ChildrenContainer.transform);
                 parentPresenter.ChildPresenters[index] = newView;
-
-                if (newView is PresenterErrorBase e)
-                {
-                    _errorScreen = e;
-                }
-
-                if (newView is PresenterLoadingBase l)
-                {
-                    _loadingScreen = l;
-                }
+                
                 newView.InitializePresenter();
             }
 
@@ -134,7 +152,8 @@ namespace CherryFramework.UI.ViewService
             if (newView.ChildrenContainer != null && newView.ChildPresenters.Count > 0)
             {
                 var viewToPop = newView.currentChild != null ? newView.currentChild : newView.ChildPresenters.First();
-                historyItem.Add(PopView(viewToPop, newView, skipAnimation));
+                PopView(viewToPop, out var newChild, newView, skipAnimation);
+                historyItem.Add(newChild);
             }
             else
             {
@@ -151,11 +170,9 @@ namespace CherryFramework.UI.ViewService
                     DebugHistory("History push");
                 }
             }
-
-            newView.ShowFrom(current?.Last(), skipAnimation);
-
+            
             ActiveView = newView;
-            return newView;
+            return newView.ShowFrom(current?.Last(), skipAnimation);;
         }
 
         public void ClearHistory()
@@ -170,13 +187,12 @@ namespace CherryFramework.UI.ViewService
             DebugHistory("History clear");
         }
 
-        public virtual void Back()
+        public virtual Sequence Back(bool skipAnimation = false)
         {
-            if (_history.Count < 1) return;
+            if (_history.Count < 1) return DOTween.Sequence();
 
             var current = _history.Pop();
             
-
             if (_history.TryPeek(out var path))
             {
                 DebugHistory("History back");
@@ -194,25 +210,25 @@ namespace CherryFramework.UI.ViewService
                     }
                 }
                 
-                current.Last().HideTo(lastItem);
+                return current.Last().HideTo(lastItem, skipAnimation);
             }
             else
             {
                 DebugHistory("History back to clear screen");
-                current.Last().HideTo(null);
                 ActiveView = null;
                 _history.Clear();
+                return current.Last().HideTo(null, skipAnimation);
             }
         }
 
-        public void HideAndReset()
+        public Sequence HideAndReset(bool skipAnimation = false)
         {
-            if (_history.Count < 1) return;
+            if (_history.Count < 1) return DOTween.Sequence();
             
             var current = _history.Pop();
-            current.Last().HideTo(null);
             ActiveView = null;
             _history.Clear();
+            return current.Last().HideTo(null, skipAnimation);
         }
 
         private void DebugHistory(string msg)

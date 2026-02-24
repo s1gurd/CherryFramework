@@ -4,25 +4,22 @@ using UnityEngine;
 
 namespace CherryFramework.UI.UiAnimation.Animators
 {
+    [RequireComponent(typeof(CanvasGroup), typeof(RectTransform))]
     public class UiFade : UiAnimationBase
     {
-        private readonly List<(CanvasGroup canvasGroup, float baseAlpha)> _targetGroups = new();
+        private (CanvasGroup canvasGroup, float baseAlpha) _targetGroup;
 
         protected override void OnInitialize()
         {
-            foreach (var target in Targets)
+            var canvasGroup = Target.GetComponent<CanvasGroup>();
+            if (canvasGroup)
             {
-                var canvasGroup = target.GetComponent<CanvasGroup>();
-                if (canvasGroup)
-                {
-                    _targetGroups.Add((canvasGroup, canvasGroup.alpha));
-                    canvasGroup.alpha = 0f;
-                    canvasGroup.blocksRaycasts = false;
-                }
+                _targetGroup = (canvasGroup, canvasGroup.alpha);
+                canvasGroup.alpha = 0f;
+                canvasGroup.blocksRaycasts = false;
             }
-
+            
             MainSequence = DOTween.Sequence();
-            base.OnInitialize();
             ResetTargetGroups();
         }
 
@@ -34,11 +31,8 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         protected void ResetTargetGroups()
         {
-            foreach (var group in _targetGroups)
-            {
-                group.canvasGroup.alpha = 0f;
-                group.canvasGroup.blocksRaycasts = false;
-            }
+            _targetGroup.canvasGroup.alpha = 0f;
+            _targetGroup.canvasGroup.blocksRaycasts = false;
         }
 
         public override Sequence Show(float delay = 0f)
@@ -61,16 +55,13 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         private void Fade(float delay, bool fadeIn)
         {
-            foreach (var tuple in _targetGroups)
-            {
-                MainSequence.Insert(0,
-                    fadeIn
-                        ? tuple.canvasGroup.DOFade(tuple.baseAlpha, duration).SetEase(showEasing)
-                        : tuple.canvasGroup.DOFade(0f, duration).SetEase(hideEasing));
+            MainSequence.Insert(0,
+                fadeIn
+                    ? _targetGroup.canvasGroup.DOFade(_targetGroup.baseAlpha, duration).SetEase(showEasing)
+                    : _targetGroup.canvasGroup.DOFade(0f, duration).SetEase(hideEasing));
 
-                MainSequence.PrependCallback(() => tuple.canvasGroup.blocksRaycasts = fadeIn);
-            }
-
+            MainSequence.PrependCallback(() => _targetGroup.canvasGroup.blocksRaycasts = fadeIn);
+            
             if (delay > 0f)
             {
                 MainSequence.PrependInterval(delay);

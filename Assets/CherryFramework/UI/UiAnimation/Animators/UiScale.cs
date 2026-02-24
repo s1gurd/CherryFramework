@@ -4,36 +4,33 @@ using UnityEngine;
 
 namespace CherryFramework.UI.UiAnimation.Animators
 {
+    [RequireComponent(typeof(RectTransform))]
     public class UiScale : UiAnimationBase
     {
         [SerializeField] private UiAnimatorEndValueTypes type;
         [SerializeField] private Vector3 value;
 
-        private readonly List<(RectTransform rectTransform, Vector3 baseValue, Vector3 endValue)> _targetGroups = new();
+        private (RectTransform rectTransform, Vector3 baseValue, Vector3 endValue) _targetGroup;
 
         protected override void OnInitialize()
         {
-            foreach (var target in Targets)
+            Vector3 startValue;
+            Vector3 endValue;
+
+            if (type == UiAnimatorEndValueTypes.To)
             {
-                Vector3 startValue;
-                Vector3 endValue;
-
-                if (type == UiAnimatorEndValueTypes.To)
-                {
-                    startValue = target.localScale;
-                    endValue = value;
-                }
-                else
-                {
-                    startValue = value;
-                    endValue = target.localScale;
-                }
-
-                _targetGroups.Add((target, startValue, endValue));
+                startValue = Target.localScale;
+                endValue = value;
+            }
+            else
+            {
+                startValue = value;
+                endValue = Target.localScale;
             }
 
+            _targetGroup = (Target, startValue, endValue);
+
             MainSequence = DOTween.Sequence();
-            base.OnInitialize();
             ResetTargetGroups();
         }
 
@@ -45,10 +42,7 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         protected void ResetTargetGroups()
         {
-            foreach (var group in _targetGroups)
-            {
-                group.rectTransform.localScale = group.baseValue;
-            }
+            _targetGroup.rectTransform.localScale = _targetGroup.baseValue;
         }
         
         public override Sequence Show(float delay = 0f)
@@ -71,20 +65,13 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         private void Scale(float delay, bool show)
         {
-            foreach (var tuple in _targetGroups)
-            {
-                MainSequence.Insert(
-                    0,
-                    show
-                        ? tuple.rectTransform.DOScale(tuple.endValue, duration).SetEase(showEasing)
-                        : tuple.rectTransform.DOScale(tuple.baseValue, duration).SetEase(hideEasing));
+            MainSequence.Insert(
+                0,
+                show
+                    ? _targetGroup.rectTransform.DOScale(_targetGroup.endValue, duration).SetEase(showEasing)
+                    : _targetGroup.rectTransform.DOScale(_targetGroup.baseValue, duration).SetEase(hideEasing));
 
-            }
-
-            if (delay > 0f)
-            {
-                MainSequence.PrependInterval(delay);
-            }
+            if (delay > 0f) MainSequence.PrependInterval(delay);
         }
     }
 }

@@ -1,12 +1,13 @@
 ﻿using DG.Tweening;
+using UnityEngine;
 
 namespace CherryFramework.UI.UiAnimation.Animators
 {
+    [RequireComponent(typeof(RectTransform))]
     public class UiActive : UiAnimationBase
     {
         protected override void OnInitialize()
         {
-            base.OnInitialize();
             MainSequence = DOTween.Sequence();
         }
 
@@ -24,10 +25,7 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         private void SetActive(bool active)
         {
-            foreach (var target in Targets)
-            {
-                target.gameObject.SetActive(active);
-            }
+            Target.gameObject.SetActive(active);
         }
     }
 }

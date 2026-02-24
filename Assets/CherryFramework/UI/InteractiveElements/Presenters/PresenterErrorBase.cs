@@ -14,7 +14,7 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
 
         private void Start()
         {
-            backButton.onClick.AddListener(ViewService.Back);
+            backButton.onClick.AddListener(() => ViewService.Back());
         }
 
         public void SetError(string title, string message)
