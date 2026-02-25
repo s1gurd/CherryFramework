@@ -11,9 +11,12 @@ namespace CherryFramework.SoundService
                 Draggable = true,
                 HideAddButton = false,
                 HideRemoveButton = false,
-                AlwaysExpanded = true
+                AlwaysExpanded = true,
+                FixDefaultValue = true
         )]
         [HideLabel, LabelText("Audio Settings")]
-        public List<AudioEvent> audioEvents = new();
+        public List<AudioEvent> audioEvents;
+        
+        
     }
 }
