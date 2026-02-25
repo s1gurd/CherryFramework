@@ -11,30 +11,30 @@ namespace CherryFramework.UI.UiAnimation.Animators
         [SerializeField] private Vector2 positionDelta;
         [SerializeField] private bool reverseDirectionOnHide = true;
         
-        private (RectTransform rectTransform, Vector3 startValue, Vector3 basevalue, Vector3 endValue) _targetGroup;
+        private (Vector2 startValue, Vector2 basevalue, Vector2 endValue) _targetGroup;
 
         protected override void OnInitialize()
         {
-            var basePosition = Target.anchoredPosition3D;
-            var delta = new Vector3(Target.rect.width * positionDelta.x, Target.rect.height * positionDelta.y, 0f);
+            var basePosition = Target.anchoredPosition;
+            var delta = new Vector2(Target.rect.width * positionDelta.x, Target.rect.height * positionDelta.y);
             var startPosition = basePosition + delta;
             var endPosition = reverseDirectionOnHide ? startPosition : basePosition + delta;
-            var group = (Target, startPosition, basePosition, endPosition);
+            var group = (startPosition, basePosition, endPosition);
             _targetGroup = group;
                 
             MainSequence = DOTween.Sequence();
-            ResetTargetGroups();
+            ResetTarget();
         }
 
-        // protected override void OnEnable()
-        // {
-        //     base.OnEnable();
-        //     ResetTargetGroups();
-        // }
-        
-        protected void ResetTargetGroups()
+        protected override void OnEnable()
         {
-            _targetGroup.rectTransform.anchoredPosition3D = _targetGroup.startValue;
+            base.OnEnable();
+            ResetTarget();
+        }
+        
+        protected void ResetTarget()
+        {
+            Target.anchoredPosition = _targetGroup.startValue;
         }
         
         public override Sequence Show(float delay = 0f)
@@ -51,15 +51,17 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         private void Slide(float delay, bool slideIn)
         {
+            if (!Inited) Initialize();
+            
             MainSequence = MainSequence.ReCreate();
             
             if (slideIn)
                 MainSequence.Append(
-                    _targetGroup.rectTransform.DOAnchorPos3D(_targetGroup.basevalue, duration).SetEase(showEasing)
+                    Target.DOAnchorPos(_targetGroup.basevalue, duration).SetEase(showEasing)
                         .From(_targetGroup.startValue));
             else
                 MainSequence.Append(
-                    _targetGroup.rectTransform.DOAnchorPos3D(_targetGroup.endValue, duration).SetEase(showEasing)
+                    Target.DOAnchorPos(_targetGroup.endValue, duration).SetEase(showEasing)
                         .From(_targetGroup.basevalue));
 
             if (delay > 0f)

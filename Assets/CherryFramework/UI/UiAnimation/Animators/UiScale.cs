@@ -10,7 +10,7 @@ namespace CherryFramework.UI.UiAnimation.Animators
         [SerializeField] private UiAnimatorEndValueTypes type;
         [SerializeField] private Vector3 value;
 
-        private (RectTransform rectTransform, Vector3 baseValue, Vector3 endValue) _targetGroup;
+        private (Vector3 baseValue, Vector3 endValue) _targetGroup;
 
         protected override void OnInitialize()
         {
@@ -28,21 +28,21 @@ namespace CherryFramework.UI.UiAnimation.Animators
                 endValue = Target.localScale;
             }
 
-            _targetGroup = (Target, startValue, endValue);
+            _targetGroup = (startValue, endValue);
 
             MainSequence = DOTween.Sequence();
-            ResetTargetGroups();
+            ResetTarget();
         }
 
         protected override void OnEnable()
         {
             base.OnEnable();
-            ResetTargetGroups();
+            ResetTarget();
         }
 
-        protected void ResetTargetGroups()
+        protected void ResetTarget()
         {
-            _targetGroup.rectTransform.localScale = _targetGroup.baseValue;
+            Target.localScale = _targetGroup.baseValue;
         }
         
         public override Sequence Show(float delay = 0f)
@@ -65,11 +65,14 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         private void Scale(float delay, bool show)
         {
+            if (!Inited) 
+                Initialize();
+
             MainSequence.Insert(
                 0,
                 show
-                    ? _targetGroup.rectTransform.DOScale(_targetGroup.endValue, duration).SetEase(showEasing)
-                    : _targetGroup.rectTransform.DOScale(_targetGroup.baseValue, duration).SetEase(hideEasing));
+                    ? Target.DOScale(_targetGroup.endValue, duration).SetEase(showEasing)
+                    : Target.DOScale(_targetGroup.baseValue, duration).SetEase(hideEasing));
 
             if (delay > 0f) MainSequence.PrependInterval(delay);
         }

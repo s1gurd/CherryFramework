@@ -8,7 +8,7 @@ using UnityEngine;
 namespace CherryFramework.UI.InteractiveElements.Widgets
 {
     [DisallowMultipleComponent]
-    public abstract class WidgetBase : InteractiveElementBase
+    public class WidgetBase : InteractiveElementBase
     {
         [Title("Widget states and settings")]
         [SerializeField] private WidgetStartupBehaviour startupBehaviour;
@@ -33,11 +33,10 @@ namespace CherryFramework.UI.InteractiveElements.Widgets
             if (!Inited)
                 Init();
         }
-        
 
         public delegate void OnStateChangedDelegate(string newStateName);
-        public event OnStateChangedDelegate StateChanging;
-        public event OnStateChangedDelegate StateChanged;
+        public event OnStateChangedDelegate OnStartStateChange = delegate { };
+        public event OnStateChangedDelegate OnFinishStateChange = delegate { };
 
         public void SetState(int state)
         {
@@ -70,11 +69,11 @@ namespace CherryFramework.UI.InteractiveElements.Widgets
 
             _currentSequence.Append(SetElementsInState(widgetStates[CurrentState], true));
 
-            StateChanging?.Invoke(widgetStates[state].stateName);
+            OnStartStateChange.Invoke(widgetStates[state].stateName);
             _currentSequence.OnComplete(() =>
             {
                 Playing = false;
-                StateChanged?.Invoke(widgetStates[state].stateName);
+                OnFinishStateChange.Invoke(widgetStates[state].stateName);
             });
         }
 

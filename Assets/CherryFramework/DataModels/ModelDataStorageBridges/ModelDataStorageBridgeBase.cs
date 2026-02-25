@@ -11,23 +11,23 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 		
         protected readonly HashSet<DataModelBase> DataLinkedModels = new ();
         protected Dictionary<Type, DataModelBase> SingletonModels;
-        protected bool DebugMode;
+        protected bool DebugMessages;
 
-        public virtual void Setup(Dictionary<Type, DataModelBase> singletonModels, bool debugMode)
+        public virtual void Setup(Dictionary<Type, DataModelBase> singletonModels, bool debugMessages)
         {
             SingletonModels = singletonModels;
-            DebugMode = debugMode;
+            DebugMessages = debugMessages;
         }
 
         public virtual bool ModelExistsInStorage(DataModelBase model) => true;
 
-        public virtual bool SingletonModelExistsInStorage<T1>(string slotId = "", string id = "") => true;
+        public virtual bool ModelExistsInStorage<T1>(string slotId = "", string id = "") => true;
 
         public virtual bool RegisterModelInStorage(DataModelBase model)
         {
             if (DataLinkedModels.Contains(model))
             {
-                if (DebugMode)
+                if (DebugMessages)
                     Debug.Log($"[Model Service - PlayerPrefs] Tried to register model {model.GetType()} to Player Prefs but it is already linked...");
                 return false;
             }
@@ -103,7 +103,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
             PlayerPrefs.Save();
         }
 		
-        public virtual DataModelBase[] GetAllLinkedModels()
+        public virtual DataModelBase[] GetAllRegisteredModels()
         {
             return DataLinkedModels.ToArray();
         }

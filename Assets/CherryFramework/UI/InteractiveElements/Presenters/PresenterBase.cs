@@ -23,6 +23,8 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
 
         public Canvas ChildrenContainer => childrenContainer;
         public List<PresenterBase> ChildPresenters => childPresenters;
+        
+        [field: SerializeField] public virtual bool Modal { get; private set; }
 
         [HideInInspector] public List<PresenterBase> uiPath = new();
         [HideInInspector] public PresenterBase currentChild;

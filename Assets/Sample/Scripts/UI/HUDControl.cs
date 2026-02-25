@@ -1,11 +1,11 @@
 ﻿using CherryFramework.DependencyManager;
 using CherryFramework.StateService;
 using CherryFramework.UI.InteractiveElements.Widgets;
-using Sample.Scripts.Settings;
-using UnityEngine;
+using Sample.Settings;
 
-namespace Sample.Scripts.UI
+namespace Sample.UI
 {
+    // Classes derived from WidgetBase can switch between states with animation
     public class HUDControl : WidgetBase
     {
         [Inject] private readonly StateService _stateService;

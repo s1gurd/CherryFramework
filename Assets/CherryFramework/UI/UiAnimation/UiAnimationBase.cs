@@ -10,18 +10,25 @@ namespace CherryFramework.UI.UiAnimation
         [SerializeField] protected Ease showEasing = Ease.OutQuad;
         [SerializeField] protected Ease hideEasing = Ease.OutQuad;
 
-        protected RectTransform Target { get; private set; }
+        protected RectTransform Target
+        {
+            get
+            {
+                _target ??= GetComponent<RectTransform>();
+                return _target;
+            }
+        }
 
         protected Sequence MainSequence;
         
         protected bool Inited;
+
+        private RectTransform _target;
         
         public void Initialize()
         {
             if (Inited)
                 return;
-            
-            Target = GetComponent<RectTransform>();
             
             Inited = true;
             OnInitialize();

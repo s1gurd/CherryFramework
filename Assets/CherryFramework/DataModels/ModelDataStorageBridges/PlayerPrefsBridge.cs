@@ -16,7 +16,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 	        return _playerPrefs.HasKey(key);
         }
 
-        public override bool SingletonModelExistsInStorage<T1>(string slotId ="", string id = "")
+        public override bool ModelExistsInStorage<T1>(string slotId ="", string id = "")
         {
 	        if (string.IsNullOrEmpty(id))
 		        id = SingletonPrefix;
@@ -38,14 +38,14 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 			if (_playerPrefs.HasKey(key))
 			{
 				var json = _playerPrefs.GetString(key);
-				if (DebugMode)
+				if (DebugMessages)
 					Debug.Log($"[Model Service - PlayerPrefs] Loaded model by key: {key} from PlayerPrefs: {json}");
 				JsonConvert.PopulateObject(json, model);
 				result = true;
 			}
 			else
 			{
-				if (DebugMode) 
+				if (DebugMessages) 
 					Debug.Log($"[Model Service - PlayerPrefs] NOT FOUND model by key: {key} in PlayerPrefs");
 			}
 			
@@ -64,7 +64,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 			var key = DataUtils.CreateKey(id, model.SlotId, model.GetType().ToString());
 			var json = JsonConvert.SerializeObject(model);
 			_playerPrefs.SetString(key, json);
-			if (DebugMode) 
+			if (DebugMessages) 
 				Debug.Log($"[Model Service - PlayerPrefs] Saved model {key} with content: {json}");
 			return true;
 		}
@@ -75,13 +75,13 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 			var key = DataUtils.CreateKey(id, model.SlotId, model.GetType().ToString());
 			if (_playerPrefs.HasKey(key))
 			{
-				if (DebugMode)
+				if (DebugMessages)
 					Debug.Log($"[Model Service - PlayerPrefs] Removed model {model.GetType()} from Player Prefs...");
 				_playerPrefs.DeleteKey(key);
 			}
 			else
 			{
-				if (DebugMode)
+				if (DebugMessages)
 					Debug.Log($"[Model Service - PlayerPrefs] Not found model {model.GetType()} in Player Prefs...");
 				return false;
 			}

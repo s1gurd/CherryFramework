@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: DinoGameSettings
   m_EditorClassIdentifier: 
   initialGameSpeed: 3
-  speedIncreasePeriod: 5
-  gameSpeedIncrease: 0.5
+  speedIncreasePeriod: 15
+  gameSpeedIncrease: 0.4
   gravity: 19.6
-  jumpForce: 8
+  jumpForce: 10
   spawnObjects:
   - source: {fileID: -5804601256915796770, guid: 79941a486faaffd478af65acec17e936, type: 3}
     spawnChance: 30
@@ -32,5 +32,10 @@ MonoBehaviour:
     spawnChance: 15
   - source: {fileID: 2348567384848177906, guid: b2b790626134b174a86b2fe38a28efdf, type: 3}
     spawnChance: 11
+  - source: {fileID: -5882008928865699378, guid: 9e891d7f86a8a6145a4021184ed37c9a, type: 3}
+    spawnChance: 10
   minSpawnRate: 1
   maxSpawnRate: 2
+  notificationShowTime: 1.5
+  powerUpLifetime: 8
+  jumpForceMultiplier: 1.4

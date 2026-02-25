@@ -15,8 +15,8 @@ namespace CherryFramework.DataModels
         private bool _bindingsOff;
         private bool _ready;
         
-        [JsonIgnore] public string Id { get; private set; } = "";
-        [JsonIgnore] public string SlotId { get; private set; } = "";
+        [JsonIgnore] public string Id { get;  set; } = "";
+        [JsonIgnore] public string SlotId { get; set; } = "";
 
         
         protected Dictionary<string, Delegate> Getters = new ();
@@ -149,16 +149,6 @@ namespace CherryFramework.DataModels
                 if (fromFields.TryGetValue(thisProp.Name, out var fromField) && thisProp.PropertyType == fromField.FieldType)
                     thisProp.SetValue(this, fromField.GetValue(instance));
             }
-        }
-
-        public void SetId(string id)
-        {
-            Id = id;
-        }
-        
-        public void SetSlotId(string slotId)
-        {
-            SlotId = slotId;
         }
         
         protected void Send<T>(string memberName, T value)

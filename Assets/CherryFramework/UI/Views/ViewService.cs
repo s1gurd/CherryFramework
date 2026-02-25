@@ -13,6 +13,11 @@ namespace CherryFramework.UI.Views
 {
     public class ViewService : GeneralClassBase
     {
+        public delegate void OnViewChangedDelegate();
+        public event OnViewChangedDelegate OnAnyViewBecameActive = delegate { };
+        public event OnViewChangedDelegate OnAllViewsBecameInactive = delegate { };
+        
+        
         [Inject] private readonly StateService.StateService _stateService;
         
         private readonly PresenterBase _root;
@@ -20,15 +25,18 @@ namespace CherryFramework.UI.Views
         private PresenterErrorBase _errorScreen;
 
         private readonly Stack<List<PresenterBase>> _history = new();
+        private readonly bool _debugMessages;
         
         public bool IsViewActive => _history.Count > 0;
+        public bool IsLastView => _history.Count == 1;
         public PresenterBase ActiveView { get; private set; }
 
-        public ViewService(RootPresenterBase root)
+        public ViewService(RootPresenterBase root, bool debugMessages)
         {
             _loadingScreen = root.LoadingScreen;
             _errorScreen = root.ErrorScreen;
             _root = root;
+            _debugMessages = debugMessages;
         }
 
         public Sequence PopLoadingView()
@@ -52,9 +60,11 @@ namespace CherryFramework.UI.Views
             return PopView<T>(out _, mountingPoint, skipAnimation);
         }
 
-        public Sequence PopView<T>(out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false) where T : PresenterBase
+        public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bool skipAnimation = false) where T : PresenterBase
         {
-            return PopView(typeof(T), out newView, mountingPoint, skipAnimation);
+            var seq = PopView(typeof(T), out var result, mountingPoint, skipAnimation);
+            newView = result as T;
+            return seq;
         }
 
         public Sequence PopView(string typeString, PresenterBase mountingPoint = null, bool skipAnimation = false)
@@ -107,10 +117,19 @@ namespace CherryFramework.UI.Views
         
         public virtual Sequence PopView(PresenterBase view, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
         {
-
-            if (_history.TryPeek(out var current) && current.Last() is IPopUp)
+            if (_history.TryPeek(out var current))
             {
-                _history.Pop();
+                if (current.Last() is IModal || current.Last().Modal)
+                {
+                    newView = null;
+                    DebugHistory("Blocked by modal view");
+                    return DOTween.Sequence();
+                }
+
+                if (current.Last() is IPopUp)
+                {
+                    _history.Pop();
+                }
             }
 
             var parentPresenter = mountingPoint ? mountingPoint : _root;
@@ -148,11 +167,17 @@ namespace CherryFramework.UI.Views
             newView.uiPath = newPath;
 
             var historyItem = new List<PresenterBase>(newPath) { newView };
+            
+            var seq = DOTween.Sequence();
+            if (!IsViewActive)
+            {
+                seq.AppendCallback(() => OnAnyViewBecameActive.Invoke());
+            }
 
             if (newView.ChildrenContainer != null && newView.ChildPresenters.Count > 0)
             {
                 var viewToPop = newView.currentChild != null ? newView.currentChild : newView.ChildPresenters.First();
-                PopView(viewToPop, out var newChild, newView, skipAnimation);
+                seq.Insert(0,PopView(viewToPop, out var newChild, newView, skipAnimation));
                 historyItem.Add(newChild);
             }
             else
@@ -172,7 +197,8 @@ namespace CherryFramework.UI.Views
             }
             
             ActiveView = newView;
-            return newView.ShowFrom(current?.Last(), skipAnimation);;
+            seq.Insert(0, newView.ShowFrom(current?.Last(), skipAnimation));
+            return seq;
         }
 
         public void ClearHistory()
@@ -189,7 +215,17 @@ namespace CherryFramework.UI.Views
 
         public virtual Sequence Back(bool skipAnimation = false)
         {
-            if (_history.Count < 1) return DOTween.Sequence();
+            if (_history.Count < 1)
+            {
+                DebugHistory("History is empty");
+                return DOTween.Sequence();
+            }
+                
+            if (_history.TryPeek(out var c) && c.Last() is IModal)
+            {
+                DebugHistory("Blocked by modal view");
+                return DOTween.Sequence();
+            }
 
             var current = _history.Pop();
             
@@ -217,7 +253,7 @@ namespace CherryFramework.UI.Views
                 DebugHistory("History back to clear screen");
                 ActiveView = null;
                 _history.Clear();
-                return current.Last().HideTo(null, skipAnimation);
+                return current.Last().HideTo(null, skipAnimation).AppendCallback(()  => OnAllViewsBecameInactive.Invoke());
             }
         }
 
@@ -228,11 +264,14 @@ namespace CherryFramework.UI.Views
             var current = _history.Pop();
             ActiveView = null;
             _history.Clear();
-            return current.Last().HideTo(null, skipAnimation);
+            return current.Last().HideTo(null, skipAnimation).AppendCallback(()  => OnAllViewsBecameInactive.Invoke());
         }
 
         private void DebugHistory(string msg)
         {
+            if (!_debugMessages)
+                return;
+            
             var sb = new StringBuilder();
             sb.Append($"[View Service] {msg}:\n");
             foreach (var item in _history)

@@ -127,10 +127,24 @@ namespace CherryFramework.DependencyManager
         public T InjectDependencies<T>(T target)
         {
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-            var fields = target.GetType().GetFields(flags)
-                .Where(f => f.GetCustomAttributes(typeof(InjectAttribute)).Any());
-            var props = target.GetType().GetProperties(flags)
-                .Where(p => p.GetCustomAttributes(typeof(InjectAttribute)).Any() && p.CanWrite);
+            
+            var fields = new List<FieldInfo>();
+            var currentType = target.GetType();
+            while (currentType != null)
+            {
+                fields.AddRange( currentType.GetFields(flags)
+                    .Where(f => f.GetCustomAttributes(typeof(InjectAttribute)).Any()).ToList());
+                currentType = currentType.BaseType;
+            }
+            
+            var props = new List<PropertyInfo>();
+            currentType = target.GetType();
+            while (currentType != null)
+            {
+                props.AddRange( currentType.GetProperties(flags)
+                    .Where(p => p.GetCustomAttributes(typeof(InjectAttribute)).Any() && p.CanWrite).ToList());
+                currentType = currentType.BaseType;
+            }
 
             foreach (var field in fields)
             {
@@ -143,6 +157,7 @@ namespace CherryFramework.DependencyManager
             }
             
             return target;
+            
             void InjectFieldValue(FieldInfo field)
             {
                 if (_dependencies.TryGetValue(field.FieldType, out var dep))

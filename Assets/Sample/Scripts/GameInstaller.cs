@@ -7,9 +7,10 @@ using CherryFramework.TickDispatcher;
 using CherryFramework.UI.Views;
 using CherryFramework.Utils.PlayerPrefsWrapper;
 using Sample.Scripts.Settings;
+using Sample.Settings;
 using UnityEngine;
 
-namespace Sample.Scripts
+namespace Sample
 {
     // We need the installer to initialize before any other objects in scene
     [DefaultExecutionOrder(-10000)]
@@ -29,7 +30,10 @@ namespace Sample.Scripts
             BindAsSingleton(new InputSystem_Actions());
             BindAsSingleton(gameSettings);
             BindAsSingleton(Camera.main);
-            BindAsSingleton(new ViewService(uiRoot));
+            BindAsSingleton(new ViewService(uiRoot, true));
+            BindAsSingleton(gameObject.AddComponent<GameManager>());
+            // When this component is destroyed, all the dependencies it binded are cleared
+            // So, if some class tries to receive an injection of an object binded here, exception will occur
         }
     }
 }

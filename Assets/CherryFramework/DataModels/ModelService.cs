@@ -11,10 +11,10 @@ namespace CherryFramework.DataModels
 		
 		private readonly Dictionary<Type, DataModelBase> _singletonModels = new();
 		
-		public ModelService(ModelDataStorageBridgeBase bridge, bool debug)
+		public ModelService(ModelDataStorageBridgeBase bridge, bool debugMessages)
 		{
 			DataStorage = bridge;
-			DataStorage.Setup(_singletonModels, debug);
+			DataStorage.Setup(_singletonModels, debugMessages);
 		}
 		
         public T GetOrCreateSingletonModel<T>() where T : DataModelBase, new()

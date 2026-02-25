@@ -20,16 +20,16 @@ namespace CherryFramework.UI.UiAnimation.Animators
             }
             
             MainSequence = DOTween.Sequence();
-            ResetTargetGroups();
+            ResetTarget();
         }
 
         protected override void OnEnable()
         {
             base.OnEnable();
-            ResetTargetGroups();
+            ResetTarget();
         }
 
-        protected void ResetTargetGroups()
+        protected void ResetTarget()
         {
             _targetGroup.canvasGroup.alpha = 0f;
             _targetGroup.canvasGroup.blocksRaycasts = false;
@@ -55,6 +55,9 @@ namespace CherryFramework.UI.UiAnimation.Animators
 
         private void Fade(float delay, bool fadeIn)
         {
+            if (!Inited) 
+                Initialize();
+
             MainSequence.Insert(0,
                 fadeIn
                     ? _targetGroup.canvasGroup.DOFade(_targetGroup.baseAlpha, duration).SetEase(showEasing)

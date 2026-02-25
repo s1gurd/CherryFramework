@@ -5,17 +5,23 @@ using CherryFramework.SaveGameManager;
 using CherryFramework.SimplePool;
 using CherryFramework.StateService;
 using DG.Tweening;
-using Sample.Scripts.Settings;
+using Sample.Settings;
 using UnityEngine;
 
-namespace Sample.Scripts
+namespace Sample
 {
+    // Behaviours inherited from BehaviourBase manage their subscriptions to different services automatically
+    // No need to unsubscribe in OnDestroy
+    
+    // To use SaveGameManager, class must implement IGameSaveData
+    // fields and properties with [SaveGameData] gets their data loaded when (Save Game Manager instance).LoadData(this) is called
     public class Spawner : BehaviourBase, IGameSaveData
     {
         [Inject] private readonly GameSettings _gameSettings;
         [Inject] private readonly StateService _stateService;
         [Inject] private readonly SaveGameManager _saveGame;
 
+        //  Create a pool for our spawned objects
         private SimplePool<PersistentObject> _objectPool = new ();
         private Sequence _spawnTimer;
         private List<int> _objectsToSpawnChanced = new();
@@ -48,7 +54,6 @@ namespace Sample.Scripts
 
             // Respawn all objects from last session, including inactive
             // Of course, feel free to make this in a more fashionable way
-            
             for (var index = 0; index < _spawnedObjects.Count; index++)
             {
                 var objIndex = _spawnedObjects[index];
@@ -65,8 +70,8 @@ namespace Sample.Scripts
             _spawnTimer.AppendCallback(Spawn);
             _spawnTimer.AppendCallback(SpawnStart);
         }
-        
-        void Spawn()
+
+        private void Spawn()
         {
             var randomIndex = _objectsToSpawnChanced[Random.Range(0, _objectsToSpawnChanced.Count)];
             var newObj = _objectPool.Get(_gameSettings.spawnObjects[randomIndex].source, transform.position, Quaternion.identity);

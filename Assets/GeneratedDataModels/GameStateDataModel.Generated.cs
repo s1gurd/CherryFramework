@@ -6,7 +6,7 @@
 using System;
 using Newtonsoft.Json;
 using CherryFramework.DataModels;
-using Sample.Scripts.DataModels.Templates;
+using Sample.DataModels.Templates;
 
 namespace GeneratedDataModels
 {
@@ -21,9 +21,21 @@ namespace GeneratedDataModels
 			Setters.Add(nameof(GameSpeed), new Action<System.Single>(o => GameSpeed = o));
 			GameSpeedAccessor = new Accessor<System.Single>(this, nameof(GameSpeed));
 
+			Getters.Add(nameof(JumpForce), new Func<System.Single>(() => JumpForce));
+			Setters.Add(nameof(JumpForce), new Action<System.Single>(o => JumpForce = o));
+			JumpForceAccessor = new Accessor<System.Single>(this, nameof(JumpForce));
+
 			Getters.Add(nameof(PlayerDead), new Func<System.Boolean>(() => PlayerDead));
 			Setters.Add(nameof(PlayerDead), new Action<System.Boolean>(o => PlayerDead = o));
 			PlayerDeadAccessor = new Accessor<System.Boolean>(this, nameof(PlayerDead));
+
+			Getters.Add(nameof(DistanceTraveled), new Func<System.Int32>(() => DistanceTraveled));
+			Setters.Add(nameof(DistanceTraveled), new Action<System.Int32>(o => DistanceTraveled = o));
+			DistanceTraveledAccessor = new Accessor<System.Int32>(this, nameof(DistanceTraveled));
+
+			Getters.Add(nameof(RunTime), new Func<System.Int32>(() => RunTime));
+			Setters.Add(nameof(RunTime), new Action<System.Int32>(o => RunTime = o));
+			RunTimeAccessor = new Accessor<System.Int32>(this, nameof(RunTime));
 
 
         }
@@ -58,6 +70,15 @@ namespace GeneratedDataModels
         [JsonIgnore]  
         public Accessor<System.Single> GameSpeedAccessor;
 
+        public System.Single JumpForce
+        {
+            get => _template.JumpForce;
+            set { _template.JumpForce = value;
+            Send<System.Single>(nameof(JumpForce), value); }
+        }     
+        [JsonIgnore]  
+        public Accessor<System.Single> JumpForceAccessor;
+
         public System.Boolean PlayerDead
         {
             get => _template.PlayerDead;
@@ -66,6 +87,24 @@ namespace GeneratedDataModels
         }     
         [JsonIgnore]  
         public Accessor<System.Boolean> PlayerDeadAccessor;
+
+        public System.Int32 DistanceTraveled
+        {
+            get => _template.DistanceTraveled;
+            set { _template.DistanceTraveled = value;
+            Send<System.Int32>(nameof(DistanceTraveled), value); }
+        }     
+        [JsonIgnore]  
+        public Accessor<System.Int32> DistanceTraveledAccessor;
+
+        public System.Int32 RunTime
+        {
+            get => _template.RunTime;
+            set { _template.RunTime = value;
+            Send<System.Int32>(nameof(RunTime), value); }
+        }     
+        [JsonIgnore]  
+        public Accessor<System.Int32> RunTimeAccessor;
 
         // ReSharper restore InconsistentNaming
     }
