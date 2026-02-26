@@ -20,7 +20,7 @@ CherryFramework is a comprehensive, modular Unity framework designed to accelera
 
 1. Copy CherryFramework into your Unity project's `Assets` folder
 
-2. Ensure [dependencies](#dependencies): DOTween, Newtonsoft.Json, 
+2. Ensure [dependencies](#dependencies): DOTween, Newtonsoft.Json, etc
 
 3. Add framework namespaces to your assembly definition files
 
