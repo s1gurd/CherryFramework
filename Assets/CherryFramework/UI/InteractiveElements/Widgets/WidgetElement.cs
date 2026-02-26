@@ -1,6 +1,6 @@
 ﻿using CherryFramework.UI.UiAnimation.Enums;
 using DG.Tweening;
-using TriInspector;
+using EditorAttributes;
 
 namespace CherryFramework.UI.InteractiveElements.Widgets
 {

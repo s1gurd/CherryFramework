@@ -1,5 +1,4 @@
 ﻿using TMPro;
-using TriInspector;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,7 +6,7 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
 {
     public abstract class PresenterErrorBase : PresenterBase, IPopUp
     {
-        [Title("Error Screen Settings")]
+        [Header("Error Screen Settings")]
         [SerializeField] private TMP_Text errorTitle;
         [SerializeField] private TMP_Text errorMsg;
         [SerializeField] private Button backButton;

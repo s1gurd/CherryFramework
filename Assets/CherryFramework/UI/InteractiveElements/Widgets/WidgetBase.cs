@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using CherryFramework.UI.UiAnimation.Enums;
 using DG.Tweening;
-using TriInspector;
+using EditorAttributes;
 using UnityEngine;
 
 namespace CherryFramework.UI.InteractiveElements.Widgets
@@ -10,10 +10,10 @@ namespace CherryFramework.UI.InteractiveElements.Widgets
     [DisallowMultipleComponent]
     public class WidgetBase : InteractiveElementBase
     {
-        [Title("Widget states and settings")]
+        [Header("Widget states and settings")]
         [SerializeField] private WidgetStartupBehaviour startupBehaviour;
         
-        [InfoBox("First element will become current state")]
+        [HelpBox("First element will become current state", MessageMode.None, drawAbove:true)]
         [SerializeField]
         protected List<WidgetState> widgetStates = new();
 

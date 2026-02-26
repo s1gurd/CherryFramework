@@ -4,14 +4,13 @@ using CherryFramework.BaseClasses;
 using CherryFramework.UI.UiAnimation;
 using CherryFramework.UI.UiAnimation.Enums;
 using DG.Tweening;
-using TriInspector;
 using UnityEngine;
 
 namespace CherryFramework.UI.InteractiveElements
 {
     public abstract class InteractiveElementBase : BehaviourBase
     {
-        [Title("Animation Settings")] [SerializeField]
+        [Header("Animation Settings")] [SerializeField]
         protected List<UiAnimationSettings> animators;
 
         protected Sequence CreateSequence(List<UiAnimationSettings> anims, Purpose purpose)

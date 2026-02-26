@@ -1,5 +1,5 @@
 ﻿using DG.Tweening;
-using TriInspector;
+using EditorAttributes;
 using UnityEngine;
 
 namespace CherryFramework.UI.UiAnimation.Animators
@@ -7,7 +7,7 @@ namespace CherryFramework.UI.UiAnimation.Animators
     [RequireComponent(typeof(RectTransform))]
     public class UiSlide : UiAnimationBase
     {
-        [InfoBox("Delta is counted as a ratio to target transform dimensions")]
+        [HelpBox("Delta is counted as a ratio to target transform dimensions", MessageMode.None, drawAbove:true)]
         [SerializeField] private Vector2 positionDelta;
         [SerializeField] private bool reverseDirectionOnHide = true;
         

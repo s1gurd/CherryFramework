@@ -5,7 +5,7 @@ using CherryFramework.DependencyManager;
 using CherryFramework.UI.UiAnimation.Enums;
 using CherryFramework.UI.Views;
 using DG.Tweening;
-using TriInspector;
+using EditorAttributes;
 using UnityEngine;
 
 namespace CherryFramework.UI.InteractiveElements.Presenters
@@ -15,11 +15,11 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
     {
         [Inject] protected readonly ViewService ViewService;
 
-        [Title("Hierarchy settings")]
+        [Header("Hierarchy settings")]
         [SerializeField] private Canvas childrenContainer;
 
-        [InfoBox("First presenter will be default")]
-        [SerializeField, DrawWithUnity] protected List<PresenterBase> childPresenters = new();
+        [MessageBox("First presenter will be shown by default", nameof(NotRootPresenter))]
+        [SerializeField] protected List<PresenterBase> childPresenters = new();
 
         public Canvas ChildrenContainer => childrenContainer;
         public List<PresenterBase> ChildPresenters => childPresenters;
@@ -77,5 +77,7 @@ namespace CherryFramework.UI.InteractiveElements.Presenters
             
             return seq;
         }
+        
+        private bool NotRootPresenter => this is not RootPresenterBase;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using CherryFramework.BaseClasses;
 using CherryFramework.DependencyManager;
+using EditorAttributes;
 using UnityEngine;
 
 namespace CherryFramework.DataModels
@@ -7,7 +8,7 @@ namespace CherryFramework.DataModels
     [DefaultExecutionOrder(10000)]
     public class ModelsSaver : BehaviourBase
     {
-        [InfoBox("Select events when all models to be saved")]
+        [HelpBox("Select events when all models to be saved", MessageMode.None, drawAbove:true)]
         [SerializeField] private bool onDestroyThis;
         [SerializeField] private bool onApplicationLostFocus;
         [SerializeField] private bool onApplicationPause;

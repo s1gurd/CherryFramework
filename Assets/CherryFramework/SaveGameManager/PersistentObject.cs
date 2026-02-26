@@ -4,6 +4,7 @@ using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
 using DG.Tweening;
+using EditorAttributes;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -19,13 +20,13 @@ namespace CherryFramework.SaveGameManager
         private const string ScenePrefix = "SceneId:";
         
         [SerializeField] private bool spawnableObject;
-        [ShowIf(nameof(spawnableObject))][SerializeField] private string customId = "OBJ";
-        [HideIf(nameof(spawnableObject))][InfoBox("For auto-filling of guid, you have to add scene to Build Settings!")]
+        [ShowField(nameof(spawnableObject))][SerializeField] private string customId = "OBJ";
+        [HideField(nameof(spawnableObject))][MessageBox("For auto-filling of guid, you have to add scene to Build Settings!", nameof(SceneNotInSettings), MessageMode.Warning, drawAbove: true)]
         [ReadOnly] public string guid = null;
         
         [SerializeField] private bool saveTransform;
 
-        [Title("DANGER ZONE")]
+        [Header("DANGER ZONE")]
         [SerializeField] private bool forceReset;
         
         [Inject] private readonly SaveGameManager _saveGame;
@@ -150,6 +151,8 @@ namespace CherryFramework.SaveGameManager
             _rotation = transform.rotation;
             _scale = transform.localScale;
         }
+        
+        private bool SceneNotInSettings => !gameObject.scene.IsValid();
 
 #if UNITY_EDITOR
         private void OnValidate()
@@ -164,7 +167,7 @@ namespace CherryFramework.SaveGameManager
             }
         }
         
-        [HideIf(nameof(spawnableObject))][Button("Generate Guid")]
+        [Button(nameof(ShowButton), ConditionResult.ShowHide)]
         private void FillGuid()
         {
             SerializedObject serializedObject = new SerializedObject(this);
@@ -188,6 +191,8 @@ namespace CherryFramework.SaveGameManager
 
             serializedObject.ApplyModifiedProperties();
         }
+
+        private bool ShowButton => !spawnableObject && !SceneNotInSettings && string.IsNullOrEmpty(guid);
 #endif
     }
 }
