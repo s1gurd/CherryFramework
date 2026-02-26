@@ -4,6 +4,8 @@ using UnityEngine;
 
 namespace CherryFramework.DependencyManager
 {
+    // We need the installer to initialize before any other objects in scene
+    [DefaultExecutionOrder(-10000)]
     public abstract class InstallerBehaviourBase : MonoBehaviour
     {
         private DependencyContainer Container => DependencyContainer.Instance;
