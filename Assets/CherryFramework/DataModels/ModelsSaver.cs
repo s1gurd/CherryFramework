@@ -1,6 +1,5 @@
 ﻿using CherryFramework.BaseClasses;
 using CherryFramework.DependencyManager;
-using TriInspector;
 using UnityEngine;
 
 namespace CherryFramework.DataModels

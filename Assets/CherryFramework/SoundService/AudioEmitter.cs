@@ -4,7 +4,6 @@ using CherryFramework.DependencyManager;
 using CherryFramework.TickDispatcher;
 using CherryFramework.Utils;
 using DG.Tweening;
-using TriInspector;
 using UnityEngine;
 
 namespace CherryFramework.SoundService

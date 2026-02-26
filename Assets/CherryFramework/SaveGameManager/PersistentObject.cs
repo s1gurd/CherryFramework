@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
 using DG.Tweening;
-using TriInspector;
 using UnityEngine;
 
 #if UNITY_EDITOR
