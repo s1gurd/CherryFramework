@@ -44,6 +44,11 @@ namespace Sample
             _ticker.Register(this);
         }
 
+        private void OnDisable()
+        {
+            _ticker.UnRegister(this);
+        }
+
         public void Tick(float deltaTime)
         {
             // If performance is not a concern, you may skip Register/UnRegister mess with ticker in OnEnable/OnDisable
@@ -56,7 +61,6 @@ namespace Sample
             transform.position += Vector3.left * (GameState.GameSpeed * deltaTime);
             if(transform.position.x < LeftEdge){
                 gameObject.SetActive(false);
-                _ticker.UnRegister(this);
             }
         }
 

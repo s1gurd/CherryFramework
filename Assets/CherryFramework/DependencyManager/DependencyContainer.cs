@@ -214,6 +214,23 @@ namespace CherryFramework.DependencyManager
             _dependencies.Remove(type);
         }
         
+        public bool HasDependency<T>() => HasDependency(typeof(T));
+
+        public bool HasDependency(Type type)
+        {
+            return _dependencies.ContainsKey(type);
+        }
+
+        internal T GetInstance<T>()
+        {
+            if (_dependencies.TryGetValue(typeof(T), out var dep))
+            {
+                return (T)dep.BindedInstance;
+            }
+            Debug.LogError($"[Dependency Container] Tried to get dependency of type {typeof(T)} which is not registered in the container!");
+            return default;
+        }
+        
         private class Dependency
         {
             public object BindedInstance;

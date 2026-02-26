@@ -8,19 +8,20 @@ using UnityEngine;
 
 namespace CherryFramework.SoundService
 {
-    public class SoundService : GeneralClassBase, IDisposable
+    public class SoundService : GeneralClassBase
     {
         private GlobalAudioSettings _audioSettings;
         private readonly Dictionary<string, AudioEvent> _events = new ();
         private SimplePool<AudioEmitter> _emitters = new ();
+        private ListenerCamera _camera;
 
         private uint _currentHandler = 0;
 
-        public SoundService(GlobalAudioSettings globalAudioSettings, AudioEventsCollection audioEvents) : this(globalAudioSettings, new List<AudioEventsCollection> { audioEvents })
+        public SoundService(GlobalAudioSettings globalAudioSettings, AudioEventsCollection audioEvents, Camera camera = null) : this(globalAudioSettings, new List<AudioEventsCollection> { audioEvents }, camera)
         {
         }
 
-        public SoundService(GlobalAudioSettings globalAudioSettings, List<AudioEventsCollection> settingsCollection)
+        public SoundService(GlobalAudioSettings globalAudioSettings, List<AudioEventsCollection> settingsCollection, Camera camera = null)
         {
             foreach (var settings in settingsCollection)
             {
@@ -32,6 +33,20 @@ namespace CherryFramework.SoundService
             
             _audioSettings = globalAudioSettings;
             DependencyContainer.Instance.BindAsSingleton(_audioSettings);
+
+            if (camera)
+            {
+                _camera = new ListenerCamera(camera);
+            }
+            else if (DependencyContainer.Instance.HasDependency<Camera>())
+            {
+                _camera = new ListenerCamera(DependencyContainer.Instance.GetInstance<Camera>());
+            }
+            else
+            {
+                _camera = new ListenerCamera(Camera.main);
+            }
+            DependencyContainer.Instance.BindAsSingleton(_camera);
         }
 
         public uint Play(string eventName, Transform emitter, float delay = 0f, Action onPlayEnd = null)
@@ -117,8 +132,18 @@ namespace CherryFramework.SoundService
 
         public override void Dispose()
         {
-            base.Dispose();
             DependencyContainer.Instance.RemoveDependency(typeof(GlobalAudioSettings));
+            DependencyContainer.Instance.RemoveDependency(typeof(ListenerCamera));
+            base.Dispose();
         }
+    }
+
+    internal class ListenerCamera
+    {
+        public ListenerCamera(Camera cam)
+        {
+            Camera = cam;
+        }
+        public Camera Camera { get; }
     }
 }

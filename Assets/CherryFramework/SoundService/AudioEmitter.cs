@@ -14,12 +14,13 @@ namespace CherryFramework.SoundService
         [SerializeField] private AudioSource source;
 
         [Inject] private readonly GlobalAudioSettings _globalSettings;
-        [Inject] private readonly Ticker _ticker;
-        [Inject] private readonly Camera _camera;
+        [Inject] private readonly ListenerCamera _camera;
 
         [ShowInInspector] [ReadOnly] public uint CurrentHandler { get; private set; }
         [ShowInInspector] [ReadOnly] public string EventKey { get; private set; }
         [HideInInspector] public AudioSource Source => source;
+        
+        private Ticker _ticker;
         
         private Transform _emitterTransform;
         private float _moveRatio;
@@ -33,6 +34,7 @@ namespace CherryFramework.SoundService
 
         private void Start()
         {
+            _ticker = new Ticker();
             _ticker.Register(this);
         }
 
@@ -90,7 +92,7 @@ namespace CherryFramework.SoundService
 
                 if (_moveRatio >= 1f && _orientRatio >= 1f)
                 {
-                    transform.parent = _camera.transform;
+                    transform.parent = _camera.Camera.transform;
                     _follow = false;
                 }
             }
@@ -244,10 +246,10 @@ namespace CherryFramework.SoundService
 
         private void SetTransformation()
         {
-            transform.position = Vector3.Lerp(_emitterTransform.position, _camera.transform.position, _moveRatio);
-            var camDir = Quaternion.LookRotation(_camera.transform.position - _emitterTransform.position, Vector3.up);
+            transform.position = Vector3.Lerp(_emitterTransform.position, _camera.Camera.transform.position, _moveRatio);
+            var camDir = Quaternion.LookRotation(_camera.Camera.transform.position - _emitterTransform.position, Vector3.up);
             transform.rotation =
-                Quaternion.Lerp(_emitterTransform.rotation, _camera.transform.rotation, _orientRatio);
+                Quaternion.Lerp(_emitterTransform.rotation, _camera.Camera.transform.rotation, _orientRatio);
         }
     }
 }
