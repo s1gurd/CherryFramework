@@ -2,6 +2,7 @@ using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
+using CherryFramework.SoundService;
 using CherryFramework.StateService;
 using CherryFramework.UI.Views;
 using DG.Tweening;
@@ -25,6 +26,7 @@ namespace Sample
         [Inject] private readonly InputSystem_Actions _inputSystem;
         [Inject] private readonly SaveGameManager _saveGame;
         [Inject] private readonly ViewService _viewService;
+        [Inject] private readonly SoundService _soundService;
 
         private Sequence _speedUpTimer;
         private GameStateDataModel _gameState;
@@ -152,7 +154,8 @@ namespace Sample
         public void OnPlayerDead()
         {
            _speedUpTimer?.Kill();
-            _viewService.PopView<PlayerDead>();
+           _viewService.PopView<PlayerDead>();
+           _soundService.Play(EventKeys.GameOver, transform); 
         }
     
         private void OnApplicationQuit()

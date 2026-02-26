@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using CherryFramework.BaseClasses;
-using CherryFramework.DependencyManager;
 using CherryFramework.TickDispatcher;
 using UnityEngine;
 
@@ -9,7 +8,7 @@ namespace CherryFramework.StateService
 {
     public class StateService : GeneralClassBase, ILateTickable
     {
-        [Inject] protected readonly Ticker Ticker;
+        protected readonly Ticker Ticker =  new Ticker();
         
         private StateAccessor _stateAccessor;
 

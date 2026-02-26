@@ -207,6 +207,10 @@ namespace CherryFramework.DependencyManager
 
         public void RemoveDependency(Type type)
         {
+            var dep = _dependencies[type];
+            if (dep.BindedInstance is IDisposable disposable)
+                disposable.Dispose();
+            
             _dependencies.Remove(type);
         }
         

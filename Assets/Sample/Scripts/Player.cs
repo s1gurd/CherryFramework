@@ -2,6 +2,7 @@ using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
+using CherryFramework.SoundService;
 using CherryFramework.TickDispatcher;
 using GeneratedDataModels;
 using Sample.Scripts.Settings;
@@ -27,6 +28,7 @@ namespace Sample
         [Inject] private readonly Ticker _ticker;
         [Inject] private readonly InputSystem_Actions _inputSystem;
         [Inject] private readonly SaveGameManager _saveGameManager;
+        [Inject] private readonly SoundService _soundService;
     
         private CharacterController _character;
         private GameStateDataModel _gameState;
@@ -54,6 +56,7 @@ namespace Sample
             //Notice that here we get Processed Value, so RocketPowerUp effect is used
             _direction = Vector3.up * _gameState.JumpForceAccessor.ProcessedValue;
             _jumpState = JumpState.Pending;
+            _soundService.Play(EventKeys.Jump, transform);
         }
 
         public void FixedTick(float deltaTime)

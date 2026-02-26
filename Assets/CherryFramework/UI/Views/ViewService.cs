@@ -17,9 +17,6 @@ namespace CherryFramework.UI.Views
         public event OnViewChangedDelegate OnAnyViewBecameActive = delegate { };
         public event OnViewChangedDelegate OnAllViewsBecameInactive = delegate { };
         
-        
-        [Inject] private readonly StateService.StateService _stateService;
-        
         private readonly PresenterBase _root;
         private PresenterLoadingBase _loadingScreen;
         private PresenterErrorBase _errorScreen;

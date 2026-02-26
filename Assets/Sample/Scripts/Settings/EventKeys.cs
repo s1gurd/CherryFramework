@@ -8,5 +8,7 @@
         public const string RocketPowerUp = "RocketPowerUp";
         
         //Keys for Audio Events
+        public const string Jump = "jump";
+        public const string GameOver = "gameover";
     }
 }

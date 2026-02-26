@@ -368,7 +368,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gameSettings: {fileID: 11400000, guid: 63b3111e35760a9498143d3214aac9a0, type: 2}
+  globalAudioSettings: {fileID: 11400000, guid: 029baeec73de5f1499febe2d0f0d3c47, type: 2}
   uiRoot: {fileID: 593149877}
+  audioEvents: {fileID: 11400000, guid: 3e50a96b7324c0846b0af335a905772d, type: 2}
 --- !u!1 &441593028
 GameObject:
   m_ObjectHideFlags: 0

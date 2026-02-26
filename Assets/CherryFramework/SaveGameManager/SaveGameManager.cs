@@ -14,7 +14,7 @@ namespace CherryFramework.SaveGameManager
 {
     public class SaveGameManager
     { 
-        protected bool DebugMessages = false;
+        protected bool DebugMessages;
         
         private readonly IPlayerPrefs _playerPrefs;
         private readonly Dictionary<IGameSaveData, PersistentObject> _persistentComponents =  new ();
@@ -23,7 +23,7 @@ namespace CherryFramework.SaveGameManager
         public IGameSaveData[] RegisteredComponents => _persistentComponents.Keys.ToArray();
         public PersistentObject[]  RegisteredObjects => _persistentComponents.Values.Distinct().ToArray();
 
-        public SaveGameManager(IPlayerPrefs playerPrefs, bool debugMessages = false)
+        public SaveGameManager(IPlayerPrefs playerPrefs, bool debugMessages)
         {
             _playerPrefs = playerPrefs;
             DebugMessages = debugMessages;

@@ -8,18 +8,19 @@ using UnityEngine;
 
 namespace CherryFramework.SoundService
 {
-    public class SoundService : GeneralClassBase
+    public class SoundService : GeneralClassBase, IDisposable
     {
-        [Inject] private readonly Camera _camera;
-        [Inject] private readonly GlobalAudioSettings _audioSettings;
-        [Inject] private readonly StateService.StateService _stateService;
-        
+        private GlobalAudioSettings _audioSettings;
         private readonly Dictionary<string, AudioEvent> _events = new ();
         private SimplePool<AudioEmitter> _emitters = new ();
 
         private uint _currentHandler = 0;
-        
-        public SoundService(List<AudioEventsCollection> settingsCollection)
+
+        public SoundService(GlobalAudioSettings globalAudioSettings, AudioEventsCollection audioEvents) : this(globalAudioSettings, new List<AudioEventsCollection> { audioEvents })
+        {
+        }
+
+        public SoundService(GlobalAudioSettings globalAudioSettings, List<AudioEventsCollection> settingsCollection)
         {
             foreach (var settings in settingsCollection)
             {
@@ -28,13 +29,9 @@ namespace CherryFramework.SoundService
                     _events.Add(evt.eventKey, evt);
                 }
             }
-
-            var listener = _camera.gameObject.GetComponent<AudioListener>();
-
-            if (!listener)
-            {
-                throw new Exception("[Sound System] No audio listener is attached to camera!!! Aborting...");
-            }
+            
+            _audioSettings = globalAudioSettings;
+            DependencyContainer.Instance.BindAsSingleton(_audioSettings);
         }
 
         public uint Play(string eventName, Transform emitter, float delay = 0f, Action onPlayEnd = null)
@@ -116,6 +113,12 @@ namespace CherryFramework.SoundService
         {
             var e = GetEmitter(handler);
             return e && e.Source.isPlaying;
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            DependencyContainer.Instance.RemoveDependency(typeof(GlobalAudioSettings));
         }
     }
 }

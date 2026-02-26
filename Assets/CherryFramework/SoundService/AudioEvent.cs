@@ -14,18 +14,18 @@ namespace CherryFramework.SoundService
     {
         [Title("Event description")][ValidateInput(nameof(EventNameCorrect))]
         public string eventKey;
+        public AudioResource audioResource;
         
-        [Title("Emitter positioning")] 
-        [Group("emitter")][Range(0f,1f)] [InfoBox("At value 0 sound source is oriented as emitter object, at value 1 it is oriented to camera")] 
-        public float orientToListener;
+        [Title("Emitter positioning")]
         [Group("emitter")][Range(0f,1f)] [InfoBox("At value 0 sound source is positioned at emitter object, at value 1 it is positioned at camera")]
         public float positionToListener;
+        [Group("emitter")][Range(0f,1f)] [InfoBox("At value 0 sound source is oriented as emitter object, at value 1 it is oriented to camera")] 
+        public float orientToListener;
         [Group("emitter")][InfoBox("Controls whether emitter should follow changing transforms of emitter and camera objects or remain static")]
         public bool freezeTransform;
         [Group("emitter")] public bool doNotDeactivateOnStop = false;
         
         [Title("Audio clip component settings")]
-        [Group("clip")]public AudioResource audioResource;
         [Group("clip")]public AudioMixerGroup output;
         [Group("clip")]public bool mute;
         [Group("clip")]public bool bypassEffects;

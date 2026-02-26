@@ -16,7 +16,5 @@ namespace CherryFramework.SoundService
         )]
         [HideLabel, LabelText("Audio Settings")]
         public List<AudioEvent> audioEvents;
-        
-        
     }
 }
