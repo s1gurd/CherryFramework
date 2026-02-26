@@ -10,7 +10,7 @@ CherryFramework is a comprehensive, modular Unity framework designed to accelera
 
 1. Download project and open in Unity (built in Unity 6, but any version past 2020 should be fine)
 
-2. Take a look at demo project in `[Assets/Sample](tree/main/Assets/Sample)` folder. Game scene is located in `Assets/Sample/Scenes/dinoscene.unity`Try to launch it several times to see how save system is working
+2. Take a look at demo project in [Assets/Sample](Assets/Sample) folder. Game scene is located in `Assets/Sample/Scenes/dinoscene.unity`Try to launch it several times to see how save system is working
 
 3. Read the Readme.md for Sample Game
 
@@ -20,7 +20,7 @@ CherryFramework is a comprehensive, modular Unity framework designed to accelera
 
 1. Copy CherryFramework into your Unity project's `Assets` folder
 
-2. Ensure [dependencies](#Dependencies): DOTween, Newtonsoft.Json, 
+2. Ensure [dependencies](#dependencies): DOTween, Newtonsoft.Json, 
 
 3. Add framework namespaces to your assembly definition files
 
@@ -44,7 +44,7 @@ CherryFramework is built on several core principles:
 
 ## Core Systems
 
-### 1. Dependency Injection
+### 1. [Dependency Injection](Docs/DependencyManager.md)
 
 The foundation of the framework, enabling loose coupling and testability. The DI container manages object lifetimes and automatically injects dependencies into classes that need them.
 
@@ -91,7 +91,7 @@ public class PlayerController : InjectMonoBehaviour
 }
 ```
 
-### 2. Data Models System
+### 2. [Data Models System](Docs/DataModels.md)
 
 An observable data layer with automatic UI binding and persistence. Models notify subscribers of changes and can be automatically saved to storage.
 
@@ -145,7 +145,7 @@ Bindings.CreateBinding(
 );
 ```
 
-### 3. Save Game System
+### 3. [Save Game System](Docs/SaveGameManager.md)
 
 A comprehensive save/load system for game objects and components. Supports both static scene objects and dynamically spawned objects with unique identification.
 
@@ -196,7 +196,7 @@ public class Player : PersistentObject, IGameSaveData
 }
 ```
 
-### 4. UI System
+### 4. [UI System](Docs/UI.md)
 
 A modular UI framework with navigation, stateful widgets, and dynamic list rendering.
 
@@ -252,7 +252,7 @@ public class MainMenuPresenter : PresenterBase
 }
 ```
 
-### 5. Audio System
+### 5. [Audio System](Docs/SoundService.md)
 
 A lightweight, event-based audio system with 3D spatial support and automatic pooling.
 
@@ -298,7 +298,7 @@ _soundService.Play("level_complete", null, 0f, () => {
 });
 ```
 
-### 6. State Service
+### 6. [State Service](Docs/StateService.md)
 
 An event and state management system for decoupled communication between components.
 
@@ -352,7 +352,7 @@ if (_stateService.IsStatusActive("IsInventoryOpen"))
 }
 ```
 
-### 7. Tick Dispatcher
+### 7. [Tick Dispatcher](Docs/TickDispatcher .md)
 
 A centralized update management system with configurable tick frequencies.
 
@@ -401,7 +401,7 @@ public class InputHandler : ITickable
 _ticker.Register(inputHandler, 0f); // Every frame
 ```
 
-### 8. Object Pooling
+### 8. [Object Pooling](Docs/SimplePool.md)
 
 A generic pooling system for performance-critical objects.
 
@@ -477,7 +477,7 @@ string key = DataUtils.CreateKey("player", slotId, "save");
 
 ---
 
-## Base Classes
+## [Base Classes](Docs/BaseClasses.md)
 
 All framework components derive from these foundational classes:
 
@@ -641,8 +641,9 @@ The framework is designed to be **modular** - use what you need, ignore what you
 
 ---
 
-**Dependencies:**
-JSON - com.unity.nuget.newtonsoft-json
+##### Dependencies
+
+ JSON - com.unity.nuget.newtonsoft-json
 
 Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
 UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
