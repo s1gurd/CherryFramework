@@ -16,14 +16,6 @@ CherryFramework is a comprehensive, modular Unity framework designed to accelera
 
 4. Read the following docs (if needed)
 
-### Installation to your project
-
-1. Copy CherryFramework into your Unity project's `Assets` folder
-
-2. Ensure [dependencies](#dependencies): DOTween, Newtonsoft.Json, etc
-
-3. Add framework namespaces to your assembly definition files
-
 ---
 
 ## CherryFramework Overview
@@ -308,7 +300,7 @@ if (_stateService.IsStatusActive("IsInventoryOpen"))
 }
 ```
 
-### 7. [Tick Dispatcher](Docs/TickDispatcher .md)
+### 7. [Tick Dispatcher](Docs/TickDispatcher.md)
 
 A centralized update management system with configurable tick frequencies.
 
