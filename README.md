@@ -563,10 +563,9 @@ The framework is designed to be **modular** - use what you need, ignore what you
 
 ##### Dependencies
 
- JSON - com.unity.nuget.newtonsoft-json
-
-Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
-UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
-Editor Decoration - https://github.com/v0lt13/EditorAttributes
+- JSON - com.unity.nuget.newtonsoft-json
+- Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
+- UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
+- Editor Decoration - https://github.com/v0lt13/EditorAttributes
 
 If you want to integrate save game data to Steam or other cloud services, I advise to use https://github.com/richardelms/FileBasedPlayerPrefs - a direct replacement to Unity's PlayerpRefs, that stores user data in an ordinary JSON files
