@@ -29,14 +29,6 @@ The framework is designed to be **modular** - use what you need, ignore what you
 
 4. Read the following docs (if needed)
 
-### Installation to your project
-
-1. Copy CherryFramework into your Unity project's `Assets` folder
-
-2. Ensure [dependencies](#dependencies): DOTween, Newtonsoft.Json, etc
-
-3. Add framework namespaces to your assembly definition files
-
 ---
 
 ## CherryFramework Overview
@@ -321,7 +313,7 @@ if (_stateService.IsStatusActive("IsInventoryOpen"))
 }
 ```
 
-### 7. [Tick Dispatcher](Docs/TickDispatcher .md)
+### 7. [Tick Dispatcher](Docs/TickDispatcher.md)
 
 A centralized update management system with configurable tick frequencies.
 
@@ -568,10 +560,9 @@ public class Player : BehaviourBase, IGameSaveData
 
 ##### Dependencies
 
- JSON - com.unity.nuget.newtonsoft-json
-
-Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
-UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
-Editor Decoration - https://github.com/v0lt13/EditorAttributes
+- JSON - com.unity.nuget.newtonsoft-json
+- Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
+- UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
+- Editor Decoration - https://github.com/v0lt13/EditorAttributes
 
 If you want to integrate save game data to Steam or other cloud services, I advise to use https://github.com/richardelms/FileBasedPlayerPrefs - a direct replacement to Unity's PlayerpRefs, that stores user data in an ordinary JSON files
