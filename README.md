@@ -48,14 +48,6 @@ CherryFramework is built on several core principles:
 
 The foundation of the framework, enabling loose coupling and testability. The DI container manages object lifetimes and automatically injects dependencies into classes that need them.
 
-| Component                | Purpose                                                          |
-| ------------------------ | ---------------------------------------------------------------- |
-| `DependencyContainer`    | Central DI container implemented as a singleton                  |
-| `InjectAttribute`        | Marks fields and properties for injection                        |
-| `InjectClass`            | Base class for non-MonoBehaviour classes that need injection     |
-| `InjectMonoBehaviour`    | Base class for Unity components that need injection              |
-| `InstallerBehaviourBase` | Base class for installers that configure dependencies at startup |
-
 **Key Features**:
 
 - Singleton and transient binding types
@@ -79,7 +71,7 @@ public class GameInstaller : InstallerBehaviourBase
 }
 
 // Usage
-public class PlayerController : InjectMonoBehaviour
+public class PlayerController : BehaviourBase
 {
     [Inject] private ILogger _logger;
     [Inject] private PlayerModel _playerModel;
@@ -95,15 +87,6 @@ public class PlayerController : InjectMonoBehaviour
 
 An observable data layer with automatic UI binding and persistence. Models notify subscribers of changes and can be automatically saved to storage.
 
-| Component                    | Purpose                                                        |
-| ---------------------------- | -------------------------------------------------------------- |
-| `ModelService`               | Central service for managing model instances                   |
-| `DataModelBase`              | Base class for all observable models                           |
-| `Accessor<T>`                | Typed property accessor with value processing pipeline         |
-| `Bindings`                   | Container for managing multiple bindings with auto-cleanup     |
-| `ValueProcessor`             | Pipeline for transforming values before they reach subscribers |
-| `ModelDataStorageBridgeBase` | Abstract base for storage implementations                      |
-
 **Key Features**:
 
 - Property change notification
@@ -116,46 +99,51 @@ An observable data layer with automatic UI binding and persistence. Models notif
 **Example**:
 
 ```csharp
-public class PlayerModel : DataModelBase
+public class PlayerData
 {
-    private int _health;
-
-    public PlayerModel()
-    {
-        Getters.Add(nameof(Health), new Func<int>(() => Health));
-        Setters.Add(nameof(Health), new Action<int>(o => Health = o));
-        HealthAccessor = new Accessor<int>(this, nameof(Health));
-    }
-
-    public int Health
-    {
-        get => _health;
-        set { _health = value; Send(nameof(Health), value); }
-    }
-
-    public Accessor<int> HealthAccessor { get; private set; }
+    public int health;
 }
 
+// This is auto-generated, do not write yourself
+public class PlayerModel : DataModelBase
+{
+    private PlayerData _template = new();
+
+    public PlayerDataModel() : base()
+    {
+			 Getters.Add(nameof(health), new Func<System.Int32>(() => health));
+			 Setters.Add(nameof(health), new Action<System.Int32>(o => health = o));
+		 	 healthAccessor = new Accessor<System.Int32>(this, nameof(health));
+    }
+
+    public System.Int32 health
+    {
+        get => _template.health;
+        set { _template.health = value;
+        Send<System.Int32>(nameof(health), value); }
+    }     
+    [JsonIgnore]  
+    public Accessor<System.Int32> healthAccessor;
+}
+
+// Setup model
+var player = _modelService.GetOrCreateSingletonModel<PlayerDataModel>();
+_modelService.DataStorage.RegisterModelInStorage(player);
+_modelService.DataStorage.LoadModelData(player);
+
 // UI Binding with value processing
-Bindings.CreateBinding(
-    _player.HealthAccessor
-        .AddProcessor(h => Mathf.Max(0, h))
-        .AddProcessor(h => h / _player.MaxHealth),
-    normalizedHealth => healthBar.fillAmount = normalizedHealth
-);
+player.healthAccessor.AddProcessor(health => Math.Min(health, 100));
+Bindings.CreateBinding(player.healthAccessor, health =>
+{
+    NotifyHealthChange(player.healthAccessor.ProcessedValue);
+});
+
+_modelService.DataStorage.SaveModelToStorage(player);
 ```
 
 ### 3. [Save Game System](Docs/SaveGameManager.md)
 
 A comprehensive save/load system for game objects and components. Supports both static scene objects and dynamically spawned objects with unique identification.
-
-| Component               | Purpose                                                  |
-| ----------------------- | -------------------------------------------------------- |
-| `SaveGameManager`       | Central service for save/load operations                 |
-| `PersistentObject`      | MonoBehaviour that marks objects as persistent           |
-| `IGameSaveData`         | Interface for components that need save/load callbacks   |
-| `SaveGameDataAttribute` | Marks fields and properties for persistence              |
-| `IPlayerPrefs`          | Storage abstraction (default PlayerPrefs implementation) |
 
 **Key Features**:
 
@@ -174,17 +162,17 @@ A comprehensive save/load system for game objects and components. Supports both 
 **Example**:
 
 ```csharp
-public class Player : PersistentObject, IGameSaveData
+public class Player : BehaviourBase, IGameSaveData
 {
+    [Inject] private readonly SaveGameManager _saveManager;
+
     [SaveGameData] private int _level;
     [SaveGameData] private float _health;
 
     private void Start()
     {
-        saveTransform = true; // Auto-save transform
-        var saveManager = DependencyContainer.Instance.GetInstance<SaveGameManager>();
-        saveManager.Register(this);
-        saveManager.LoadData(this);
+        _saveManager.Register(this);
+        _saveManager.LoadData(this);
     }
 
     public void OnAfterLoad()
@@ -199,16 +187,6 @@ public class Player : PersistentObject, IGameSaveData
 ### 4. [UI System](Docs/UI.md)
 
 A modular UI framework with navigation, stateful widgets, and dynamic list rendering.
-
-| Component           | Purpose                                           |
-| ------------------- | ------------------------------------------------- |
-| `ViewService`       | Central navigation service managing view stack    |
-| `RootPresenterBase` | Root container for all presenters                 |
-| `PresenterBase`     | Base class for screen-level UI components         |
-| `WidgetBase`        | Stateful UI component with multiple visual states |
-| `WidgetElement`     | Individual UI element with show/hide animations   |
-| `PopulatorBase<T>`  | Dynamic list renderer with object pooling         |
-| `UiAnimationBase`   | Base class for declarative UI animations          |
 
 **Key Features**:
 
@@ -256,14 +234,6 @@ public class MainMenuPresenter : PresenterBase
 
 A lightweight, event-based audio system with 3D spatial support and automatic pooling.
 
-| Component               | Purpose                                                   |
-| ----------------------- | --------------------------------------------------------- |
-| `SoundService`          | Central audio playback service                            |
-| `AudioEvent`            | Serializable sound definition (configured in collections) |
-| `AudioEmitter`          | Pooled audio source component                             |
-| `GlobalAudioSettings`   | ScriptableObject for global configuration                 |
-| `AudioEventsCollection` | ScriptableObject container for multiple AudioEvents       |
-
 **Key Features**:
 
 - Event-based playback using string keys
@@ -302,15 +272,6 @@ _soundService.Play("level_complete", null, 0f, () => {
 
 An event and state management system for decoupled communication between components.
 
-| Component           | Purpose                                     |
-| ------------------- | ------------------------------------------- |
-| `StateService`      | Central manager for events and statuses     |
-| `StateAccessor`     | Query interface for subscription conditions |
-| `EventBase`         | Base class for all events                   |
-| `PayloadEvent<T>`   | Event with typed payload data               |
-| `StateStatus`       | Tracks status activation time               |
-| `StateSubscription` | Represents a conditional subscription       |
-
 **Key Features**:
 
 - Events (one-frame notifications) vs Statuses (persistent states)
@@ -320,12 +281,7 @@ An event and state management system for decoupled communication between compone
 - Frame-aware tracking (when events were emitted)
 - Automatic cleanup via IUnsubscriber
 
-**Event vs Status**:
-| | Event | Status |
-|---|---|---|
-| Duration | One frame | Persistent until changed |
-| Usage | One-time notifications | Long-lived states |
-| Examples | "PlayerDied", "LevelComplete" | "IsGamePaused", "IsInventoryOpen" |
+
 
 **Example**:
 
@@ -356,17 +312,10 @@ if (_stateService.IsStatusActive("IsInventoryOpen"))
 
 A centralized update management system with configurable tick frequencies.
 
-| Component         | Purpose                                                          |
-| ----------------- | ---------------------------------------------------------------- |
-| `Ticker`          | Central manager that processes all registered tickables          |
-| `ITickable`       | Interface for per-frame updates (equivalent to Update)           |
-| `ILateTickable`   | Interface for late updates (equivalent to LateUpdate)            |
-| `IFixedTickable`  | Interface for fixed timestep updates (equivalent to FixedUpdate) |
-| `TickerBehaviour` | Unity MonoBehaviour that drives the Ticker                       |
-
 **Key Features**:
 
 - Configurable tick periods per component (e.g., 0.2s = 5 fps)
+- Support for regular Tick, LateTick, FixedTick
 - Automatic cleanup via IUnsubscriber
 - Activity checking for MonoBehaviours
 - Centralized control over all updates
@@ -389,25 +338,21 @@ public class EnemyAI : ITickable
 _ticker.Register(enemyAI, 0.2f);
 
 // For critical updates
-public class InputHandler : ITickable
+public class InputHandler : IFixedTickable
 {
-    public void Tick(float deltaTime)
+    public void FixedTick(float deltaTime)
     {
         // Must run every frame
         ProcessInput();
     }
 }
 
-_ticker.Register(inputHandler, 0f); // Every frame
+_ticker.Register(inputHandler); // Every frame
 ```
 
 ### 8. [Object Pooling](Docs/SimplePool.md)
 
 A generic pooling system for performance-critical objects.
-
-| Component       | Purpose                                   |
-| --------------- | ----------------------------------------- |
-| `SimplePool<T>` | Generic pool for any Unity Component type |
 
 **Key Features**:
 
@@ -446,48 +391,18 @@ private void OnTriggerEnter(Collider other)
 }
 ```
 
-### 9. Utility Systems
-
-Helper classes for common programming tasks.
-
-| Component         | Purpose                                              |
-| ----------------- | ---------------------------------------------------- |
-| `EnumerableUtils` | LINQ extensions (SelectWhere, Each, IndexOf, TryGet) |
-| `MathUtils`       | Vector/Quaternion conversions, range checking        |
-| `ComponentUtils`  | Safe null checks for Unity objects                   |
-| `DataUtils`       | Key generation utilities                             |
-| `StringUtils`     | String extension methods                             |
-
-**Example**:
-
-```csharp
-// Safe null check
-if (transform.SafeIsUnityNull()) return;
-
-// Enumerable utilities
-var results = items.SelectWhere(item => 
-    item.IsValid ? (true, item.Value) : (false, null));
-
-// Math utilities
-float normalized = value.InRange(min, max) ? value : min;
-
-// Data utilities
-string key = DataUtils.CreateKey("player", slotId, "save");
-```
-
 ---
 
 ## [Base Classes](Docs/BaseClasses.md)
 
 All framework components derive from these foundational classes:
 
-| Class                    | Purpose                                | Auto Features                                 |
-| ------------------------ | -------------------------------------- | --------------------------------------------- |
-| `InjectClass`            | Non-MonoBehaviour with DI              | Constructor injection                         |
-| `InjectMonoBehaviour`    | MonoBehaviour with DI                  | OnEnable injection                            |
-| `BehaviourBase`          | MonoBehaviour + bindings + cleanup     | Binding cleanup, unsubscription on destroy    |
-| `GeneralClassBase`       | Non-MonoBehaviour + bindings + cleanup | Binding cleanup, IDisposable                  |
-| `InteractiveElementBase` | Animated UI elements                   | Show/hide animations with lifecycle callbacks |
+| Class                 | Purpose                                | Auto Features                              |
+| --------------------- | -------------------------------------- | ------------------------------------------ |
+| `InjectClass`         | Non-MonoBehaviour with DI              | Constructor injection                      |
+| `InjectMonoBehaviour` | MonoBehaviour with DI                  | OnEnable injection                         |
+| `BehaviourBase`       | MonoBehaviour + bindings + cleanup     | Binding cleanup, unsubscription on destroy |
+| `GeneralClassBase`    | Non-MonoBehaviour + bindings + cleanup | Binding cleanup, IDisposable               |
 
 **Example**:
 
@@ -593,19 +508,26 @@ public class ProjectInstaller : InstallerBehaviourBase
 ### 3. Create Your First Component
 
 ```csharp
-public class Player : BehaviourBase
+public class Player : BehaviourBase, IGameSaveData
 {
-    [Inject] private PlayerModel _model;
+    [Inject] private ModelService _modelService;
     [Inject] private SoundService _audio;
     [Inject] private StateService _state;
+    [Inject] private SaveGameManager _saveManager;
+
+    [SaveGameData] private Item[] _inventory;
 
     private void Start()
     {
+        var _model = _modelService.GetOrCreateSingletonModel<PlayerDataModel>();
+        // Load model data
+        _modelService.DataStorage.RegisterModelInStorage(_model);
+        _modelService.DataStorage.LoadModelData(_model);
+
         // Bind to model
         Bindings.CreateBinding(_model.HealthAccessor, OnHealthChanged);
 
-        // Register with save system
-        var saveManager = DependencyContainer.Instance.GetInstance<SaveGameManager>();
+        // Register with save system and get the inventory items (Item class must be [Serializable])
         saveManager.Register(this);
         saveManager.LoadData(this);
     }
@@ -617,6 +539,12 @@ public class Player : BehaviourBase
             _state.EmitEvent("PlayerDied");
             _audio.Play("player_death", transform);
         }
+    }
+
+    private void OnDestroy()
+    {
+        _saveManager.SaveData(this);
+        _modelService.DataStorage.SaveModelToStorage(_model);
     }
 }
 ```
