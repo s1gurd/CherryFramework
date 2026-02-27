@@ -4,6 +4,19 @@
 
 CherryFramework is a comprehensive, modular Unity framework designed to accelerate game development by providing battle-tested solutions for common game architecture challenges. It promotes clean architecture, decoupled components, and rapid prototyping through a cohesive set of integrated systems.
 
+This is a complete, production-ready foundation for Unity development with:
+
+* **Dependency Injection** for loose coupling and testability
+* **Data Models** with automatic UI binding and persistence
+* **Save/Load System** for game state with GUID-based identification
+* **UI Framework** with navigation, widgets, and dynamic lists
+* **Audio System** with 3D spatial support and pooling
+* **State Management** for decoupled event communication
+* **Tick Dispatcher** for optimized update frequencies
+* **Object Pooling** for performance-critical objects
+
+The framework is designed to be **modular** - use what you need, ignore what you don't. Each system works independently but integrates seamlessly when combined, allowing you to build anything from simple prototypes to complex, full-featured games.
+
 ---
 
 ## Where to start
@@ -549,23 +562,7 @@ public class Player : BehaviourBase, IGameSaveData
 }
 ```
 
----
 
-## Summary
-
-CherryFramework provides a complete, production-ready foundation for Unity development with:
-
-- **Dependency Injection** for loose coupling and testability
-- **Data Models** with automatic UI binding and persistence
-- **Save/Load System** for game state with GUID-based identification
-- **UI Framework** with navigation, widgets, and dynamic lists
-- **Audio System** with 3D spatial support and pooling
-- **State Management** for decoupled event communication
-- **Tick Dispatcher** for optimized update frequencies
-- **Object Pooling** for performance-critical objects
-- **Utility Systems** for common programming tasks
-
-The framework is designed to be **modular** - use what you need, ignore what you don't. Each system works independently but integrates seamlessly when combined, allowing you to build anything from simple prototypes to complex, full-featured games.
 
 ---
 
