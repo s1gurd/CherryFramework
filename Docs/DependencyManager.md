@@ -44,14 +44,14 @@ The CherryFramework DependencyManager provides a lightweight dependency injectio
 ### Architecture Diagram
 
 ```
-┌──────────────────────────────────────────────—───────┐
+┌──────────────────────────────────────────────────────┐
 │                  DependencyContainer                 │
 │                    (Singleton)                       │
-├────────────────────────────────────────────—─────────┤
+├──────────────────────────────────────────────────────┤
 │ + BindAsSingleton<T>()                               │
 │ + Bind<T>()                                          │
 │ + InjectDependencies<T>(T target)                    │
-└───────────────────────────────────────────────—──────┘
+└──────────────────────────────────────────────────────┘
                               │
             ┌─────────────────┼─────────────────┐
             ▼                 ▼                 ▼
@@ -71,7 +71,7 @@ The CherryFramework DependencyManager provides a lightweight dependency injectio
                     ┌────────────────────┐
                     │  [Inject]          │
                     │  Fields/Properties │
-                    └───────────────────┘
+                    └────────────────────┘
 ```
 
 ### Key Components
@@ -287,7 +287,7 @@ DependencyContainer.Instance.BindAsSingleton<TextureCache>();
 
 ```csharp
 // Factory classes - new each time
-DependencyContainer.Instance.Bind<EnemyFactory>(BindingType.Transient);
+DependencyContainer.Instance.Bind<EnemyFactory, IUnitFactory>(BindingType.Transient);
 
 // Request-scoped data
 DependencyContainer.Instance.Bind<LevelData>(BindingType.Transient);
@@ -299,7 +299,7 @@ DependencyContainer.Instance.Bind<LevelData>(BindingType.Transient);
 
 **Namespace**: `CherryFramework.DependencyManager`
 
-**Purpose**: Marks fields and properties for dependency injection. Can only be used in classes that implement `IInjectTarget`.
+**Purpose**: Marks fields and properties for dependency injection
 
 ```csharp
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
@@ -634,11 +634,11 @@ public class MyService : InjectClass
 }
 
 // BAD - Repeated container lookups
-public class BadService
+public class BadService : InjectClass
 {
     public void DoWork()
     {
-        var service = DependencyContainer.Instance.GetInstance<IExpensiveService>(); // Lookup each time
+        var service = DependencyContainer.Instance.InjectDependencies(this); // Lookup each time
         service.Process();
     }
 }
@@ -815,10 +815,11 @@ public class GameManager : InjectClass
     public void Cleanup()
     {
         DependencyContainer.Instance.RemoveDependency(typeof(ITemporaryService));
+        _service = null;
     }
 }
 
-// Always unsubscribe events
+// Always unsubscribe events. This is not needed if using CherryFramework.StateService
 public class EventSubscriber : InjectMonoBehaviour
 {
     [Inject] private EventDispatcher _events;
@@ -837,7 +838,7 @@ public class EventSubscriber : InjectMonoBehaviour
 
 ### Issue 5: Multiple Bindings for Same Type
 
-**Symptoms**: Only the first binding works, others are ignored
+**Symptoms**: Only the first binding works, others produce error message
 
 **Cause**: Container doesn't support multiple bindings for the same type
 
@@ -846,7 +847,7 @@ public class EventSubscriber : InjectMonoBehaviour
 ```csharp
 // PROBLEM: Can't have multiple bindings for same type
 DependencyContainer.Instance.BindAsSingleton<ILogger, FileLogger>();
-DependencyContainer.Instance.BindAsSingleton<ILogger, ConsoleLogger>(); // Ignored!
+DependencyContainer.Instance.BindAsSingleton<ILogger, ConsoleLogger>(); // Error mesage!
 
 // SOLUTION: Use factories or named bindings pattern
 public interface ILogger { }
@@ -992,7 +993,7 @@ The container only supports one binding per type. Registering multiple implement
 ```csharp
 // Only the first binding is effective
 DependencyContainer.Instance.BindAsSingleton<FileLogger, ILogger>(); // Works
-DependencyContainer.Instance.BindAsSingleton<ConsoleLogger, ILogger>(); // Ignored!
+DependencyContainer.Instance.BindAsSingleton<ConsoleLogger, ILogger>(); // Error!
 ```
 
 ### 3. No Named Bindings

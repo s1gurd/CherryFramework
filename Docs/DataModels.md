@@ -107,17 +107,23 @@ public class GameManager : BehaviourBase
         _player = _modelService.GetOrCreateSingletonModel<PlayerModel>();
         _settings = _modelService.GetOrCreateSingletonModel<SettingsModel>();
 
+        // Register callback to be called when the data becomes ready
+        // Also note invokeImmediate: false - this ensures that binding does not get invoked right after registering
+        Bindings.CreateBinding(_gameState.ReadyAccessor, ContinueLoading, invokeImmediate: false);
+
         // Register for persistence
         _modelService.DataStorage.RegisterModelInStorage(_player);
         _modelService.DataStorage.RegisterModelInStorage(_settings);
 
-        // Load saved data
+        // Load saved data, Ready property in models are set to True
         _modelService.DataStorage.LoadModelData(_player);
         _modelService.DataStorage.LoadModelData(_settings);
+    }
 
-        // Mark as ready
-        _player.Ready = true;
-        _settings.Ready = true;
+    private void ContinueLoading(bool ready)
+    {
+        if (ready)
+            // continue
     }
 
     private void OnApplicationQuit()
@@ -435,10 +441,10 @@ public class PlayerHUD : BehaviourBase
 }
 ```
 
-### Manual Binding Without Auto-cleanup
+### Manual Binding Without Auto-cleanup (not recommended, but possible)
 
 ```csharp
-public class TempUI : MonoBehaviour
+public class TempUI : MonoBehaviour, IInjectTarget
 {
     [Inject] private readonly ModelService _modelService;
     private DownwardBindingHandler _binding;
@@ -519,9 +525,10 @@ public class CurrencyDisplay : BehaviourBase
             // Stage 2: Apply tax (medium priority)
             .AddProcessor(gold => ApplyTax(gold), priority: 50)
             // Stage 3: Format for display (lowest priority = runs first)
-            .AddProcessor(gold => FormatGold(gold), priority: 0)
-            // Bind to UI
-            .BindDownwards(formatted => goldText.text = formatted);
+            .AddProcessor(gold => FormatGold(gold), priority: 0);
+        
+        // Bind to UI. Not that Processed Value is used to set text
+        Bindings.CreateBinding(_player.GoldAccessor, _ => goldText.text = _player.GoldAccessor.ProcessedValue);
     }
 
     private int ApplyGuildBonus(int gold) => Mathf.RoundToInt(gold * 1.1f);
@@ -811,10 +818,6 @@ public class GameInitializer : BehaviourBase
         // Load existing data
         _modelService.DataStorage.LoadModelData(player);
         _modelService.DataStorage.LoadModelData(settings);
-
-        // Mark as ready
-        player.Ready = true;
-        settings.Ready = true;
     }
 }
 ```
@@ -858,10 +861,8 @@ public class ScoreDisplay : BehaviourBase
     {
         var player = _modelService.GetOrCreateSingletonModel<PlayerModel>();
 
-        player.ScoreAccessor
-            .AddProcessor(score => score.ToString("N0"))
-            .AddProcessor(str => $"Score: {str}")
-            .BindDownwards(text => scoreText.text = text);
+        player.ScoreAccessor.AddProcessor(str => $"Score: {str}");
+        Bindings.CreateBinding(player.ScoreAccessor, _ => scoreText.text = player.ScoreAccessor.ProcessedValue);
     }
 }
 ```
@@ -1056,9 +1057,8 @@ public class ProfileUI : BehaviourBase
         Bindings.CreateBinding(_profile.achievementsAccessor, UpdateAchievements);
 
         // Processed binding for experience bar
-        _profile.experienceAccessor
-            .AddProcessor(exp => (float)exp / GetExpForLevel(_profile.level))
-            .BindDownwards(progress => _expSlider.value = progress);
+        _profile.experienceAccessor.AddProcessor(exp => (float)exp / GetExpForLevel(_profile.level));
+        Bindings.CreaateBinding(_profile.experienceAccessor, _ => _expSlider.value = _profile.experienceAccessor.ProcessedValue);
     }
 
     private void UpdateName(string name) => _nameText.text = name;

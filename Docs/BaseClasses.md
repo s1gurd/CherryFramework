@@ -60,6 +60,7 @@ public class MyService : GeneralClassBase
     public MyService()
     {
         EventManager.Subscribe("GameEvent", HandleEvent);
+        // Note that if you use StateService, the unsubscriptions are added automatically
         AddUnsubscription(() => EventManager.Unsubscribe("GameEvent", HandleEvent));
     }
 
@@ -219,11 +220,6 @@ public class PlayerController : BehaviourBase
     {
         gameObject.SetActive(false);
     }
-
-    protected override void OnDestroy()
-    {
-        base.OnDestroy(); // Auto-cleans bindings and subscriptions
-    }
 }
 ```
 
@@ -311,7 +307,7 @@ protected override void OnDestroy()
 }
 ```
 
-### 2. Register All Cleanup
+### 2. Register All Cleanup for External and Custom Services
 
 ```csharp
 AddUnsubscription(() => {
@@ -332,12 +328,4 @@ Bindings.CreateBinding(
 );
 ```
 
-### 4. Choose the Right Base Class
-
-- **Services/Managers** → `GeneralClassBase`
-- **GameObjects/Components** → `BehaviourBase`
-- 
-
-# 
-
-
+ 
