@@ -116,9 +116,9 @@ public class PlayerModel : DataModelBase
 
     public PlayerDataModel() : base()
     {
-			 Getters.Add(nameof(health), new Func<System.Int32>(() => health));
-			 Setters.Add(nameof(health), new Action<System.Int32>(o => health = o));
-		 	 healthAccessor = new Accessor<System.Int32>(this, nameof(health));
+             Getters.Add(nameof(health), new Func<System.Int32>(() => health));
+             Setters.Add(nameof(health), new Action<System.Int32>(o => health = o));
+              healthAccessor = new Accessor<System.Int32>(this, nameof(health));
     }
 
     public System.Int32 health
@@ -285,8 +285,8 @@ An event and state management system for decoupled communication between compone
 - One-time subscriptions with auto-removal
 - Frame-aware tracking (when events were emitted)
 - Automatic cleanup via IUnsubscriber
-
-
+  
+  
 
 **Example**:
 
@@ -558,7 +558,7 @@ public class Player : BehaviourBase, IGameSaveData
 
 ---
 
-##### Dependencies
+##### Dependencies (included in project)
 
 - JSON - com.unity.nuget.newtonsoft-json
 - Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
