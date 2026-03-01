@@ -78,7 +78,7 @@ namespace CherryFramework.StateService
             if (_debugMessages)
             {
                 Debug.Log(
-                    $"[State Service] Invoked {counter} events at frame {Time.frameCount}");
+                    $"[State Service] Invoked {counter} events at time {Time.time}");
             }
 
             foreach (var kvp in volatileEvents)
@@ -103,22 +103,22 @@ namespace CherryFramework.StateService
         public void EmitEvent<T>(string key, T payload)
         {
             _updateNeeded = true;
-            _currentEvents[key] = new PayloadEvent<T>(payload, Time.frameCount);
+            _currentEvents[key] = new PayloadEvent<T>(payload, Time.time);
             if (_debugMessages)
             {
                 Debug.Log(
-                    $"[State Service] Emit event \"{key}\" with {typeof(T)} payload at frame {Time.frameCount}");
+                    $"[State Service] Emit event \"{key}\" with {typeof(T)} payload at time {Time.time}");
             }
         }
 
         public void EmitEvent(string key)
         {
             _updateNeeded = true;
-            _currentEvents[key] = new BasicEvent(Time.frameCount);
+            _currentEvents[key] = new BasicEvent(Time.time);
             if (_debugMessages)
             {
                 Debug.Log(
-                    $"[State Service] Emit event \"{key}\" at frame {Time.frameCount}");
+                    $"[State Service] Emit event \"{key}\" at time {Time.time}");
             }
         }
 
@@ -171,13 +171,13 @@ namespace CherryFramework.StateService
                 return;
             
             _updateNeeded = true;
-            _becameActiveStatuses[key] = new StateStatus(Time.frameCount);
+            _becameActiveStatuses[key] = new StateStatus(Time.time);
             _inactiveStatuses.Remove(key);
             _becameInactiveStatuses.Remove(key);
             if (_debugMessages)
             {
                 Debug.Log(
-                    $"[State Service] Set status \"{key}\" at frame {Time.frameCount}");
+                    $"[State Service] Set status \"{key}\" at time {Time.time}");
             }
         }
         
@@ -187,13 +187,13 @@ namespace CherryFramework.StateService
                 return;
             
             _updateNeeded = true;
-            _becameInactiveStatuses[key] = new StateStatus(Time.frameCount);
+            _becameInactiveStatuses[key] = new StateStatus(Time.time);
             _activeStatuses.Remove(key);
             _becameActiveStatuses.Remove(key);
             if (_debugMessages)
             {
                 Debug.Log(
-                    $"[State Service] Unset status \"{key}\" at frame {Time.frameCount}");
+                    $"[State Service] Unset status \"{key}\" at time {Time.time}");
             }
         }
 
@@ -280,7 +280,7 @@ namespace CherryFramework.StateService
 
         private class BasicEvent : EventBase
         {
-            public BasicEvent(int emitFrame) : base(emitFrame)
+            public BasicEvent(float emitTime) : base(emitTime)
             {
             }
         }

@@ -2,11 +2,11 @@
 {
     public abstract class EventBase
     {
-        public int EmitFrame;
+        public float EmitTime;
 
-        protected EventBase(int emitFrame)
+        protected EventBase(float emitTime)
         {
-            EmitFrame = emitFrame;
+            EmitTime = emitTime;
         }
     }
 }

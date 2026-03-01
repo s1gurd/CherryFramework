@@ -106,7 +106,7 @@ namespace CherryFramework.TickDispatcher
             }
         }
 
-        public void AddTick(ITickable obj, float tickPeriod = 0f)
+        private void AddTick(ITickable obj, float tickPeriod = 0f)
         {
             if (_tickables.Exists(t => ReferenceEquals(t.Obj, obj)) && !_removeTickDelayed.Exists(t => ReferenceEquals(t.Obj, obj)))
             {
@@ -117,7 +117,7 @@ namespace CherryFramework.TickDispatcher
             AddUnsubscription(obj);
         }
 
-        public void AddLateTick(ILateTickable obj, float tickPeriod = 0f)
+        private void AddLateTick(ILateTickable obj, float tickPeriod = 0f)
         {
             if (_lateTickables.Exists(t => ReferenceEquals(t.Obj, obj)) && !_removeLateTickDelayed.Exists(t => ReferenceEquals(t.Obj, obj)))
             {
@@ -128,7 +128,7 @@ namespace CherryFramework.TickDispatcher
             AddUnsubscription(obj);
         }
 
-        public void AddFixedTick(IFixedTickable obj, float tickPeriod = 0f)
+        private void AddFixedTick(IFixedTickable obj, float tickPeriod = 0f)
         {
             if (_fixedTickables.Exists(t => ReferenceEquals(t.Obj, obj)) && !_removeFixTickDelayed.Exists(t => ReferenceEquals(t.Obj, obj)))
             {
@@ -139,13 +139,13 @@ namespace CherryFramework.TickDispatcher
             AddUnsubscription(obj);
         }
 
-        public void RemoveTick(ITickable obj) 
+        private void RemoveTick(ITickable obj) 
             => _removeTickDelayed.AddRange(_tickables.Where(x => ReferenceEquals(x.Obj, obj)));
 
-        public void RemoveLateTick(ILateTickable obj)
+        private void RemoveLateTick(ILateTickable obj)
             => _removeLateTickDelayed.AddRange(_lateTickables.Where(x=> ReferenceEquals(x.Obj, obj)));
-        
-        public void RemoveFixedTick(IFixedTickable obj)
+
+        private void RemoveFixedTick(IFixedTickable obj)
             => _removeFixTickDelayed.AddRange(_fixedTickables.Where(x=> ReferenceEquals(x.Obj, obj)));
 
         public void Register(ITickableBase obj, float tickPeriod = 0f)

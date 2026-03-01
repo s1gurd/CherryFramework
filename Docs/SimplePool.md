@@ -20,12 +20,12 @@ The CherryFramework `SimplePool<T>` provides a lightweight, type-safe object poo
 
 ### Why Use Object Pooling?
 
-| Without Pooling                                   | With Pooling             |
-| ------------------------------------------------- | ------------------------ |
-| `Instantiate()` and `Destroy()` called constantly | Objects reused from pool |
-| Frequent garbage collection                       | Minimal GC overhead      |
-| Performance spikes during instantiation           | Consistent performance   |
-| No object limit                                   | Controlled pool size     |
+| Without Pooling                                        | With Pooling             |
+| ------------------------------------------------------ | ------------------------ |
+| `Instantiate()` and `Destroy()` called constantly      | Objects reused from pool |
+| Frequent garbage collection                            | Minimal GC overhead      |
+| Performance spikes during instantiation and GC cleanup | Consistent performance   |
+| No object limit                                        | Controlled pool size     |
 
 ---
 
@@ -205,6 +205,7 @@ public class Bullet : MonoBehaviour
 
     public void Initialize()
     {
+        gameObject.SetActive(true);
         // Setup bullet
     }
 
@@ -280,6 +281,7 @@ public class EffectManager : MonoBehaviour
     public void SpawnExplosion(Vector3 position)
     {
         var explosion = _explosionPool.Get(_explosionPrefab, position, Quaternion.identity);
+        explosion.gameObject.SetActive(true);
         explosion.Play();
         StartCoroutine(DeactivateAfterSeconds(explosion, explosion.main.duration));
     }
@@ -536,7 +538,7 @@ public class MonitoredPool<T> : SimplePool<T> where T : Component
 **Solution**: Clear pools when no longer needed
 
 ```csharp
-public class SceneCleanup : MonoBehaviour
+public class SceneCleanup : BehaviourBase
 {
     [Inject] private PoolManager _poolManager;
 
@@ -627,63 +629,6 @@ private void OnDestroy()
 DontDestroyOnLoad(gameObject);
 ```
 
-### 5. Use Object-Specific Pools
-
-```csharp
-// One pool per prefab type
-private SimplePool<Bullet> _pistolPool;
-private SimplePool<Bullet> _riflePool;
-private SimplePool<Bullet> _shotgunPool;
-private SimplePool<Enemy> _zombiePool;
-private SimplePool<Enemy> _skeletonPool;
-```
-
-### 6. Implement IPoolable Interface
-
-```csharp
-public interface IPoolable
-{
-    void OnPoolGet();
-    void OnPoolReturn();
-}
-
-public class PoolableEnemy : MonoBehaviour, IPoolable
-{
-    public void OnPoolGet()
-    {
-        gameObject.SetActive(true);
-        ResetState();
-    }
-
-    public void OnPoolReturn()
-    {
-        gameObject.SetActive(false);
-        CleanupEffects();
-    }
-
-    private void ResetState() { }
-    private void CleanupEffects() { }
-}
-```
-
-### 7. Monitor Pool Health
-
-```csharp
-private void Update()
-{
-    if (Time.frameCount % 600 == 0) // Every 10 seconds at 60fps
-    {
-        int active = _enemyPool.ActiveObjects(_enemyPrefab).Count;
-        int total = GetTotalPoolSize(); // Would need custom implementation
-
-        if (active > total * 0.8f)
-        {
-            Debug.LogWarning($"Enemy pool at {active}/{total} capacity");
-        }
-    }
-}
-```
-
 ---
 
 ## Examples
@@ -705,6 +650,7 @@ public class Bullet : MonoBehaviour
 
     public void Initialize(Vector3 direction)
     {
+        gameObject.SetActive(true);
         GetComponent<Rigidbody>().velocity = direction * _speed;
     }
 
@@ -858,6 +804,7 @@ public class EnemySpawner : MonoBehaviour
     {
         var point = _spawnPoints[Random.Range(0, _spawnPoints.Length)];
         var enemy = _enemyPool.Get(_enemyPrefab, point.position, point.rotation);
+        enemy.gameObject.SetActive(true);
         // Enemy automatically starts due to OnEnable
     }
 
@@ -980,18 +927,18 @@ public class GameEvents : MonoBehaviour
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      SimplePool<T>                           │
+│                      SimplePool<T>                          │
 ├─────────────────────────────────────────────────────────────┤
-│ - Dictionary<T, List<T>> _pool                               │
-│                                                              │
+│ - Dictionary<T, List<T>> _pool                              │
+│                                                             │
 │ + Get(T sample)                                 ←───┐       │
-│ + Get(T sample, position, rotation)                  │       │
-│ + List<T> ActiveObjects(T sample)                     │ Uses  │
-│ + void Clear()                                      ←───┘       │
+│ + Get(T sample, position, rotation)                 │       │
+│ + List<T> ActiveObjects(T sample)                   │ Uses  │
+│ + void Clear()                                  ←───┘       │
 └─────────────────────────────────────────────────────────────┘
          │                          │
-         │ One pool per              │ Tracks
-         │ prefab type                │
+         │ One pool per             │ Tracks
+         │ prefab type              │
          ▼                          ▼
 ┌─────────────────┐        ┌─────────────────┐
 │  List of objects│        │ Active objects  │
@@ -1012,25 +959,22 @@ public class GameEvents : MonoBehaviour
 
 ### Key Points
 
-| #   | Key Point                                    | Why It Matters                                                 |
-| --- | -------------------------------------------- | -------------------------------------------------------------- |
-| 1   | **Always deactivate objects when done**      | Returns them to pool for reuse (`gameObject.SetActive(false)`) |
-| 2   | **Reset state in OnEnable**                  | Ensures fresh state when object is reused                      |
-| 3   | **Prewarm pools at start**                   | Avoids runtime instantiation spikes                            |
-| 4   | **Clear pools when changing scenes**         | Prevents memory leaks                                          |
-| 5   | **Use separate pools for different prefabs** | Each prefab needs its own pool                                 |
-| 6   | **Monitor pool usage**                       | Detect issues before they cause problems                       |
-| 7   | **Set reasonable pool sizes**                | Balance memory usage vs. performance                           |
-| 8   | **Use the same sample reference**            | Different references create different pools                    |
+| #   | Key Point                                        | Why It Matters                                                 |
+| --- | ------------------------------------------------ | -------------------------------------------------------------- |
+| 1   | **Always deactivate objects when done**          | Returns them to pool for reuse (`gameObject.SetActive(false)`) |
+| 2   | **Always reactivate objects when got from pool** | Manually handle object activity when needed                    |
+| 3   | **Reset state in OnEnable**                      | Ensures fresh state when object is reused                      |
+| 4   | **Clear pools when changing scenes**             | Prevents memory leaks                                          |
+| 8   | **Use the same sample reference**                | Different references create different pools                    |
 
 ### When to Use SimplePool
 
-| Use Pooling                           | Don't Pool                 |
-| ------------------------------------- | -------------------------- |
-| Bullets / Projectiles                 | Boss enemies (rare)        |
-| Enemies in waves                      | Unique quest items         |
-| Particle effects                      | Level geometry             |
-| UI elements that appear frequently    | Objects created once       |
-| Anything created/destroyed frequently | Objects with complex setup |
+| Use Pooling                           | Don't Pool                                       |
+| ------------------------------------- | ------------------------------------------------ |
+| Bullets / Projectiles                 | Boss enemies (rare)                              |
+| Enemies in waves                      | Unique quest items                               |
+| Particle effects                      | Level geometry                                   |
+| UI elements that appear frequently    | Objects created once |
+| Anything created/destroyed frequently | Objects with complex setup                       |
 
 SimplePool provides an efficient, easy-to-use object pooling solution that integrates seamlessly with the CherryFramework, helping you write high-performance Unity games with minimal garbage collection overhead.

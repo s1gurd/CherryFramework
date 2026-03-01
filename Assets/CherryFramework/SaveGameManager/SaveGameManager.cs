@@ -148,7 +148,7 @@ namespace CherryFramework.SaveGameManager
             return true;
         }
 
-        public virtual void SaveData(IGameSaveData component)
+        public virtual void SaveData<T>(T component) where T : IGameSaveData
         {
             if (!_persistentComponents.TryGetValue(component, out var persistentObj))
             {
@@ -158,10 +158,10 @@ namespace CherryFramework.SaveGameManager
             
             component.OnBeforeSave();
             
-            var props = component.GetType()
+            var props = typeof(T)
                 .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
                     p.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any() && p.CanWrite).ToList();
-            var fields = component.GetType()
+            var fields = typeof(T)
                 .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(f =>
                     f.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any()).ToList();
 

@@ -32,11 +32,10 @@ The CherryFramework SaveGameManager provides a comprehensive save game system th
 - **Callback System**: Pre/post save/load lifecycle hooks
 - **PlayerPrefs Integration**: Built-in storage using Unity PlayerPrefs
 - **Extensible Storage**: Implement custom storage with `IPlayerPrefs` interface
-- **Force Reset Option**: Ability to reset saved data on load
 
 ### Important Requirements
 
-- Objects must have a `PersistentObject` component to be saveable
+- Game objects must have a `PersistentObject` component to be saveable
 - Components must implement `IGameSaveData` to receive save/load callbacks
 - Marked fields/properties must be serializable
 - Data Models (`DataModelBase`) should use `ModelService` instead of SaveGameManager
@@ -98,13 +97,13 @@ The SaveGameManager uses a sophisticated identification system to uniquely ident
 
 ### Key Components
 
-| Component               | Purpose                                                        |
-| ----------------------- | -------------------------------------------------------------- |
-| `SaveGameManager`       | Central service for save game operations                       |
-| `IGameSaveData`         | Interface for components that need save/load callbacks         |
-| `PersistentObject`      | MonoBehaviour that marks objects as persistent and manages IDs |
-| `SaveGameDataAttribute` | Marks fields/properties for persistence                        |
-| `IPlayerPrefs`          | Storage abstraction (default: PlayerPrefs)                     |
+| Component               | Purpose                                                             |
+| ----------------------- | ------------------------------------------------------------------- |
+| `SaveGameManager`       | Central service for save game operations                            |
+| `IGameSaveData`         | Interface for components that need save/load callbacks              |
+| `PersistentObject`      | MonoBehaviour that marks game objects as persistent and manages IDs |
+| `SaveGameDataAttribute` | Marks fields/properties for persistence                             |
+| `IPlayerPrefs`          | Storage abstraction (default: PlayerPrefs)                          |
 
 ---
 
@@ -132,7 +131,7 @@ public class SaveGameManager
 
     // Data Operations (Synchronous)
     public virtual bool LoadData<T>(T component) where T : IGameSaveData;
-    public virtual void SaveData(IGameSaveData component);
+    public virtual void SaveData<T>(T component) where T : IGameSaveData;
     public void SaveAllData();
     public virtual bool DeleteData<T>(T component) where T : IGameSaveData;
 
@@ -164,14 +163,15 @@ public virtual bool Register<T>(T component, PersistentObject persistentObj = nu
 **Example**:
 
 ```csharp
-public class PlayerHealth : MonoBehaviour, IGameSaveData
+public class PlayerHealth : BehaviourBase, IGameSaveData
 {
+    [Inject] private readonly SaveGameManager _saveManager;
+
     [SaveGameData] private float _health;
 
     private void Start()
     {
-        var saveManager = DependencyContainer.Instance.GetInstance<SaveGameManager>();
-        saveManager.Register(this); // Auto-finds PersistentObject on same GameObject
+        _saveManager.Register(this); // Auto-finds PersistentObject on same GameObject
     }
 }
 ```
@@ -203,7 +203,7 @@ public void LoadPlayer()
 #### SaveData
 
 ```csharp
-public virtual void SaveData(IGameSaveData component)
+public virtual void SaveData<T>(T component) where T : IGameSaveData
 ```
 
 **Example**:
@@ -245,7 +245,7 @@ public void ResetSaveData()
 {
     if (_saveManager.DeleteData(this))
     {
-        Debug.Log("Save data deleted");
+        Debug.Log("Save data found and deleted");
     }
 }
 ```
@@ -408,6 +408,7 @@ Example: SceneId:3.550e8400-e29b-41d4-a716-446655440000
 - GUIDs are **automatically generated** in the Unity Editor
 - This **only works for scenes that are included in Build Settings**
 - If a scene is not in Build Settings, the GUID field will remain empty
+- If object is a prefab asset not placed on scene, the GUID field will remain empty
 - GUIDs are read-only and should not be modified manually
 
 **Example Scene Object**:
@@ -714,40 +715,6 @@ public class AutoSaveManager : MonoBehaviour
 }
 ```
 
-### Async with Coroutines
-
-For Unity projects that prefer coroutines over async/await:
-
-```csharp
-public class CoroutineSaveManager : MonoBehaviour
-{
-    [Inject] private SaveGameManager _saveManager;
-
-    public IEnumerator SaveAllDataCoroutine()
-    {
-        var operation = StartCoroutine(SaveAsyncCoroutine());
-        yield return operation;
-        Debug.Log("Save complete");
-    }
-
-    private IEnumerator SaveAsyncCoroutine()
-    {
-        int total = _saveManager.RegisteredComponents.Length;
-        int completed = 0;
-
-        foreach (var component in _saveManager.RegisteredComponents)
-        {
-            // Yield every few saves to keep UI responsive
-            if (completed % 5 == 0)
-                yield return null;
-
-            _saveManager.SaveData(component);
-            completed++;
-        }
-    }
-}
-```
-
 ### Thread-Safe Storage Implementation
 
 For true async operations, you need thread-safe storage:
@@ -846,24 +813,6 @@ private void Update()
 [SaveGameData] private Dictionary<CustomClass, List<OtherClass>> _complex; // Slow
 ```
 
-### 5. Batch Operations
-
-```csharp
-// GOOD - Batch related saves
-public void SaveCheckpoint()
-{
-    _saveManager.SaveAllData(); // Save everything at once
-}
-
-// BAD - Multiple individual saves
-public void SaveCheckpoint()
-{
-    _saveManager.SaveData(player);
-    _saveManager.SaveData(inventory);
-    _saveManager.SaveData(world); // Three separate disk writes
-}
-```
-
 ---
 
 ## Common Issues and Solutions
@@ -872,11 +821,12 @@ public void SaveCheckpoint()
 
 **Symptoms**: Scene object's GUID field empty, object won't save
 
-**Causes**: Scene not in Build Settings
+**Causes**: Scene not in Build Settings, or object is a prefab in the Project tab
 
 **Solution**:
 
 ```csharp
+// Place object on a scene
 // Add scene to Build Settings
 // File → Build Settings → Add Open Scenes
 
@@ -923,8 +873,9 @@ public class EnemySpawner : MonoBehaviour
 
     public Enemy SpawnEnemy()
     {
+        var spawnedEnemies = _modelService.GetOrCreateSingletonModel<SpawnDataModel>();
         var enemy = Instantiate(enemyPrefab).GetComponent<Enemy>();
-        enemy.SetCustomSuffix(_localCounter++); // Unique per spawner
+        enemy.SetCustomSuffix(spawnedEnemies.EnemyCounter++); // Unique per spawner
         return enemy;
     }
 }
@@ -1287,7 +1238,7 @@ public class SafeLoad : IGameSaveData
 
 ```csharp
 // 1. Player component with save data
-public class Player : MonoBehaviour, IGameSaveData
+public class Player : BehaviourBase, IGameSaveData
 {
     [Inject] private SaveGameManager _saveManager;
 
@@ -1483,7 +1434,7 @@ public class SaveableEnemy : PersistentObject
 }
 
 // 4. Save slot manager with async support
-public class SaveSlotUI : MonoBehaviour
+public class SaveSlotUI : BehaviourBase
 {
     [Inject] private SaveGameManager _saveManager;
 
@@ -1538,7 +1489,7 @@ public class SaveSlotUI : MonoBehaviour
 }
 
 // 5. Auto-save manager with coroutines
-public class AutoSaveManager : MonoBehaviour
+public class AutoSaveManager : BehaviourBase
 {
     [Inject] private SaveGameManager _saveManager;
 
@@ -1668,7 +1619,7 @@ public class AutoSaveManager : MonoBehaviour
 | 1   | **PersistentObject automatically saves transform** when `saveTransform` is enabled | No need to manually save position/rotation/scale          |
 | 2   | **Scene objects use GUIDs** auto-generated from Build Settings                     | Unique identification without manual setup                |
 | 3   | **Spawnable objects use customId + suffix**                                        | `customId` identifies the type, `suffix` separates copies |
-| 4   | **GUIDs only generate for scenes in Build Settings**                               | Always add persistent scenes to Build Settings            |
+| 4   | **GUIDs only generate for objects on scenes in Build Settings**                    | Always add persistent scenes to Build Settings            |
 | 5   | **Each spawnable copy needs a unique suffix**                                      | Prevents data conflicts between identical objects         |
 | 6   | **Components must implement IGameSaveData**                                        | Receives lifecycle callbacks (OnBeforeLoad, etc.)         |
 | 7   | **Mark fields with [SaveGameData]**                                                | Only marked fields are persisted                          |
@@ -1681,7 +1632,7 @@ public class AutoSaveManager : MonoBehaviour
 | Game Size  | Save File Size | Recommended Approach               |
 | ---------- | -------------- | ---------------------------------- |
 | Small      | < 100KB        | Synchronous (default)              |
-| Medium     | 100KB - 1MB    | Coroutine with yields              |
+| Medium     | 100KB - 1MB    | Depends on save frequency          |
 | Large      | > 1MB          | Async with Task.Run                |
 | Very Large | > 10MB         | Background thread + chunked saving |
 

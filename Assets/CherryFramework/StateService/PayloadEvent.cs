@@ -4,7 +4,7 @@
     {
         public T Payload;
 
-        public PayloadEvent(T payload, int emitFrame) : base(emitFrame)
+        public PayloadEvent(T payload, float emitTime) : base(emitTime)
         {
             Payload = payload;
         }

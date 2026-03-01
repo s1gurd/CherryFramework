@@ -349,43 +349,6 @@ public class AudioEvent
 }
 ```
 
-### Example Definitions (inside an AudioEventsCollection)
-
-```csharp
-// Footstep sound - 2D
-new AudioEvent
-{
-    eventKey = "footstep",
-    volume = 0.5f,
-    pitch = 1.0f,
-    spatialBlend = 0f, // 2D sound
-    positionToListener = 1f // At camera
-};
-
-// Explosion - Full 3D
-new AudioEvent
-{
-    eventKey = "explosion",
-    volume = 1f,
-    spatialBlend = 1f, // Full 3D
-    positionToListener = 0f, // At explosion
-    rolloffMode = AudioRolloffMode.Linear,
-    minDistance = 10f,
-    maxDistance = 50f
-};
-
-// Ambient music - Looping
-new AudioEvent
-{
-    eventKey = "ambient_music",
-    volume = 0.7f,
-    loop = true,
-    spatialBlend = 0f, // 2D
-    positionToListener = 1f, // At camera
-    freezeTransform = true
-};
-```
-
 ---
 
 ## AudioEmitter
@@ -538,63 +501,9 @@ Assets/
 
 ---
 
-## Performance Considerations
-
-### 1. Emitter Pooling
-
-```csharp
-// SoundService automatically pools emitters
-private SimplePool<AudioEmitter> _emitters = new();
-
-// Pre-warm pool in constructor
-for (int i = 0; i < 10; i++)
-{
-    var emitter = _emitters.Get(_audioSettings.emitterSample);
-    emitter.gameObject.SetActive(false);
-}
-```
-
-### 2. Transform Following
-
-```csharp
-// Only update position every few frames for performance
-if (Time.frameCount % 3 == 0)
-{
-    UpdatePosition();
-}
-```
-
-### 3. Fading with DOTween
-
-```csharp
-// For many simultaneous fades
-public void FadeOutAll(float duration)
-{
-    DOTween.KillAll(); // Kill existing tweens
-    foreach (var emitter in _emitters.ActiveObjects(_audioSettings.emitterSample))
-    {
-        emitter.FadeOut(duration);
-    }
-}
-```
-
-### 4. Handler Lookup Optimization
-
-```csharp
-// Cache emitters by handler for faster lookup
-private Dictionary<uint, AudioEmitter> _handlerMap = new();
-
-public AudioEmitter GetEmitter(uint handler)
-{
-    return _handlerMap.TryGetValue(handler, out var emitter) ? emitter : null;
-}
-```
-
----
-
 ## Common Issues and Solutions
 
-### Issue 1: Sound Not Playing
+### Issue 1: Sound Not Playing, Error Are Firing in Console
 
 **Solution**: Verify event exists in a collection and AudioResource is assigned
 
@@ -610,7 +519,7 @@ public uint SafePlay(string eventName, Transform emitter)
 }
 ```
 
-### Issue 2: 3D Positioning Not Working
+### Issue 2: 3D Positioning Not Working, or Incorrect Volume
 
 **Solution**: Configure AudioEvent correctly in your collection
 
@@ -754,7 +663,7 @@ new AudioEvent
 ### 3. Use Fading for Music
 
 ```csharp
-public class MusicManager : MonoBehaviour
+public class MusicManager : BehaviourBase
 {
     [Inject] private SoundService _soundService;
 
@@ -801,7 +710,7 @@ void ExplodeAndDestroy()
 ### 5. Pool Management
 
 ```csharp
-public class AudioPoolMonitor : MonoBehaviour
+public class AudioPoolMonitor : BehaviourBase
 {
     [Inject] private SoundService _soundService;
 
@@ -820,7 +729,7 @@ public class AudioPoolMonitor : MonoBehaviour
 ### 6. Dynamic Audio Parameters
 
 ```csharp
-public class EngineSound : MonoBehaviour
+public class EngineSound : BehaviourBase
 {
     [Inject] private SoundService _soundService;
     private uint _engineHandler;
@@ -872,8 +781,10 @@ public static void ValidateAudioCollection(AudioEventsCollection collection)
 
 ### 8. Volume Control by Category
 
+It is more advisable to control group volume via the Mixer Group, but code-based approach will do too
+
 ```csharp
-public class AudioSettings : MonoBehaviour
+public class AudioSettings : BehaviourBase
 {
     [Inject] private SoundService _soundService;
 
@@ -946,7 +857,7 @@ public class AudioInstaller : InstallerBehaviourBase
 }
 
 // 3. Audio Manager
-public class AudioManager : MonoBehaviour
+public class AudioManager : BehaviourBase
 {
     [Inject] private SoundService _soundService;
 
@@ -994,7 +905,7 @@ public class AudioManager : MonoBehaviour
 }
 
 // 4. Player Audio
-public class PlayerAudio : MonoBehaviour
+public class PlayerAudio : BehaviourBase
 {
     [Inject] private AudioManager _audio;
 
@@ -1020,7 +931,7 @@ public class PlayerAudio : MonoBehaviour
 }
 
 // 5. Enemy Audio
-public class EnemyAudio : MonoBehaviour
+public class EnemyAudio : BehaviourBase
 {
     [Inject] private AudioManager _audio;
 
@@ -1041,7 +952,7 @@ public class EnemyAudio : MonoBehaviour
 }
 
 // 6. UI Audio
-public class UIAudio : MonoBehaviour
+public class UIAudio : BehaviourBase
 {
     [Inject] private AudioManager _audio;
 
@@ -1065,7 +976,7 @@ public class UIAudio : MonoBehaviour
 ### 3D Sound Example
 
 ```csharp
-public class Explosion : MonoBehaviour
+public class Explosion : BehaviourBase
 {
     [Inject] private AudioManager _audio;
 
@@ -1091,7 +1002,7 @@ public class Explosion : MonoBehaviour
 ### Background Music with Crossfade
 
 ```csharp
-public class BackgroundMusic : MonoBehaviour
+public class BackgroundMusic : BehaviourBase
 {
     [Inject] private SoundService _soundService;
 
@@ -1168,9 +1079,9 @@ public class BackgroundMusic : MonoBehaviour
 | 3   | **AudioEmitters are automatically pooled**                                | Reduces garbage collection and improves performance    |
 | 4   | **Each play call returns a unique handler**                               | Allows individual control of each sound instance       |
 | 5   | **Position blending (0-1) between emitter and camera**                    | Flexible 3D audio positioning                          |
-| 6   | **FadeIn/FadeOut methods with DOTween**                                   | Smooth volume transitions                              |
+| 6   | **FadeIn/FadeOut methods**                                                | Smooth volume transitions                              |
 | 7   | **Multiple AudioEventsCollections can be loaded**                         | Organize sounds by category (SFX, Music, UI)           |
-| 8   | **Callback on sound completion**                                          | Chain actions after sounds finish                      |
+| 8   | **Callback on sound completion**              | Chain actions after sounds finish                      |
 
 ### When to Use SoundService
 

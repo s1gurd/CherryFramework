@@ -2,7 +2,7 @@
 {
     public class StateStatus : EventBase
     {
-        public StateStatus(int emitTime) : base(emitTime)
+        public StateStatus(float emitTime) : base(emitTime)
         {
         }
     }

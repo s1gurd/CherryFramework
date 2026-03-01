@@ -128,16 +128,8 @@ public partial class Ticker : GeneralClassBase
     public void Register(ITickableBase obj, float tickPeriod = 0f);
     public void Register<T>(T obj, bool checkActivity, float tickPeriod = 0f) where T : MonoBehaviour, ITickableBase;
 
-    // Individual Registration
-    public void AddTick(ITickable obj, float tickPeriod = 0f);
-    public void AddLateTick(ILateTickable obj, float tickPeriod = 0f);
-    public void AddFixedTick(IFixedTickable obj, float tickPeriod = 0f);
-
-    // Removal Methods
+    // Removal
     public void UnRegister(ITickableBase obj);
-    public void RemoveTick(ITickable obj);
-    public void RemoveLateTick(ILateTickable obj);
-    public void RemoveFixedTick(IFixedTickable obj);
 
     // Internal Update Methods (called by TickerBehaviour)
     internal void Update();
@@ -224,24 +216,6 @@ public class PlayerController : MonoBehaviour, ITickable
 }
 ```
 
-#### Individual Registration Methods
-
-```csharp
-public void AddTick(ITickable obj, float tickPeriod = 0f)
-public void AddLateTick(ILateTickable obj, float tickPeriod = 0f)
-public void AddFixedTick(IFixedTickable obj, float tickPeriod = 0f)
-```
-
-Register specific types of tickables.
-
-**Example**:
-
-```csharp
-_ticker.AddTick(updateComponent, 0.1f);
-_ticker.AddLateTick(cameraController, 0f);
-_ticker.AddFixedTick(physicsObject, 0.02f);
-```
-
 ### Removal Methods
 
 #### UnRegister
@@ -262,23 +236,6 @@ public class Enemy : MonoBehaviour, ITickable
         _ticker.UnRegister(this); // Manual cleanup
     }
 }
-```
-
-#### Individual Removal Methods
-
-```csharp
-public void RemoveTick(ITickable obj)
-public void RemoveLateTick(ILateTickable obj)
-public void RemoveFixedTick(IFixedTickable obj)
-```
-
-Remove specific types of tickables.
-
-**Example**:
-
-```csharp
-_ticker.RemoveTick(enemyAI);
-_ticker.RemoveLateTick(cameraRig);
 ```
 
 ### Internal Update Methods
@@ -547,16 +504,16 @@ for (int i = 0; i < 5000; i++) // Too many!
 }
 
 // SOLUTION - Use pooling with active tracking
-public class BulletManager
+public class BulletManager : ITickable
 {
     private List<Bullet> _activeBullets = new();
 
-    private void Update()
+    private void Tick()
     {
         // Manually update only active bullets
         foreach (var bullet in _activeBullets)
         {
-            bullet.Update();
+            bullet.Tick();
         }
     }
 }
@@ -624,25 +581,9 @@ public class MyBehaviour : MonoBehaviour, ITickable
         _ticker.Register(this, checkActivity: true, 0f);
     }
 
-    private void Update()
+    public void Tick()
     {
         // If you disable the component, ticks stop
-    }
-}
-
-// SOLUTION 4: Auto-cleanup on destroy
-public class AutoCleanup : MonoBehaviour, ITickable, IUnsubscriber
-{
-    private Action _onDestroy;
-
-    public void AddUnsubscription(Action action)
-    {
-        _onDestroy += action;
-    }
-
-    private void OnDestroy()
-    {
-        _onDestroy?.Invoke(); // Auto-unregisters from ticker
     }
 }
 ```
@@ -661,7 +602,7 @@ public class AutoCleanup : MonoBehaviour, ITickable, IUnsubscriber
 
 ```csharp
 // SOLUTION 1: Implement IUnsubscriber
-public class CleanObject : ITickable, IUnsubscriber
+public class CleanObject : ITickable, IUnsubscriber, IDisposable
 {
     private Action _cleanup;
 
@@ -677,7 +618,7 @@ public class CleanObject : ITickable, IUnsubscriber
 }
 
 // SOLUTION 2: Manual cleanup
-public class ManualClean : ITickable
+public class ManualClean : IInjectTarget, ITickable
 {
     [Inject] private Ticker _ticker;
 
@@ -693,82 +634,23 @@ using (var tickable = new MyTickable())
     _ticker.Register(tickable);
     // Use it...
 } // Automatically disposed and unregistered
-```
 
-### Issue 3: TickerBehaviour Not Found
 
-**Symptoms**: Ticker created but no updates happening
-
-**Cause**: TickerBehaviour GameObject was destroyed
-
-**Solution**:
-
-```csharp
-// The Ticker creates its own GameObject with TickerBehaviour
-// If something destroys it, ticks stop
-
-public class SafeTicker : Ticker
+// SOLUTION 4 (The best one): Inherit from GeneralClassBase or BehaviourBase
+public class GoodClass : BehaviourBase, ITickable
 {
-    public SafeTicker() : base()
-    {
-        // Ensure TickerBehaviour is not accidentally destroyed
-        GameObject.DontDestroyOnLoad(_behaviour.gameObject);
-    }
-}
+    [Inject] private readonly Ticker _ticker;
 
-// Or recreate if needed
-public void EnsureTickerRunning()
-{
-    if (_ticker == null)
+    private void Start()
     {
-        _ticker = new Ticker();
+       _ticker.Register(this);
     }
+
+    // That's all, no need to cleanup, _ticker.UnRegister(this) will be called in OnDestroy
 }
 ```
 
-### Issue 4: Tick Period Not Respected
-
-**Symptoms**: Object ticks more frequently than specified period
-
-**Causes**:
-
-- Delta time accumulation causing early ticks
-- Multiple registrations of same object
-
-**Solutions**:
-
-```csharp
-// SOLUTION 1: Check delta time in tick method
-public void Tick(float deltaTime)
-{
-    // Even if tick period is 0.2s, deltaTime might be smaller
-    // on first frame after registration
-    _accumulatedTime += deltaTime;
-
-    if (_accumulatedTime >= _desiredInterval)
-    {
-        DoWork();
-        _accumulatedTime = 0;
-    }
-}
-
-// SOLUTION 2: Ensure single registration
-public class SafeRegister : ITickable
-{
-    private bool _registered;
-
-    public void EnsureRegistered(Ticker ticker)
-    {
-        if (!_registered)
-        {
-            ticker.Register(this, 0.2f);
-            _registered = true;
-        }
-    }
-}
-```
-
-### Issue 5: Activity Checking Not Working
+### Issue 3: Activity Checking Not Working
 
 **Symptoms**: Object ticks even when disabled/inactive
 
@@ -792,33 +674,6 @@ public class MyBehaviour : MonoBehaviour, ITickable
     {
         // This will only run if gameObject.activeInHierarchy 
         // AND this component is enabled
-    }
-}
-```
-
-### Issue 6: Performance Degradation Over Time
-
-**Symptoms**: Game slows down after long play sessions
-
-**Cause**: Accumulated tickables not cleaned up
-
-**Solution**:
-
-```csharp
-public class TickerMonitor : MonoBehaviour
-{
-    [Inject] private Ticker _ticker;
-
-    private void Update()
-    {
-        // Monitor tickable counts (would need to extend Ticker to expose)
-        // If counts grow unexpectedly, investigate cleanup
-    }
-
-    private void OnLevelWasLoaded()
-    {
-        // Optionally clear all tickables on level change
-        // _ticker.ClearAll(); // Would need this method
     }
 }
 ```
@@ -918,35 +773,18 @@ public class OptimizedBehaviour : MonoBehaviour, ITickable
 }
 ```
 
-### 4. Implement IUnsubscriber for Auto-Cleanup
+### 4. Inherit from GeneralClassBase or BehaviourBase for Auto-Cleanup
 
 ```csharp
-public class SelfCleaning : ITickable, IUnsubscriber
+public class SelfCleaning : GeneralClassBase, ITickable
 {
-    private Action _onDestroy;
-
-    public void AddUnsubscription(Action action)
-    {
-        _onDestroy += action;
-    }
-
     public void Tick(float deltaTime)
     {
         // Update logic
     }
-
-    public void Dispose()
-    {
-        _onDestroy?.Invoke();
-    }
 }
 
-// Usage
-using (var obj = new SelfCleaning())
-{
-    _ticker.Register(obj);
-    // Use object...
-} // Automatically unregistered
+
 ```
 
 ### 5. Pool Tickable Objects
@@ -1090,70 +928,6 @@ public class DebuggableTickable : ITickable
 }
 ```
 
-### 9. Handle Scene Transitions
-
-```csharp
-public class SceneTransitionHandler : MonoBehaviour
-{
-    [Inject] private Ticker _ticker;
-
-    private void OnEnable()
-    {
-        SceneManager.sceneUnloaded += OnSceneUnloaded;
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneUnloaded -= OnSceneUnloaded;
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    private void OnSceneUnloaded(Scene scene)
-    {
-        // Clear all tickables when leaving a scene
-        // Note: Ticker doesn't have ClearAll() - would need to extend
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        // Re-register persistent tickables
-    }
-}
-```
-
-### 10. Monitor Performance
-
-```csharp
-public class TickerProfiler : MonoBehaviour
-{
-    [Inject] private Ticker _ticker;
-
-    private float _updateTime;
-    private int _updateCount;
-
-    private void Update()
-    {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-
-        // Force ticker update (normally automatic)
-        // _ticker.Update();
-
-        sw.Stop();
-        _updateTime += (float)sw.Elapsed.TotalMilliseconds;
-        _updateCount++;
-
-        if (_updateCount % 100 == 0)
-        {
-            float avgTime = _updateTime / _updateCount;
-            Debug.Log($"Average Ticker update time: {avgTime:F3}ms");
-            _updateTime = 0;
-            _updateCount = 0;
-        }
-    }
-}
-```
-
 ---
 
 ## Examples
@@ -1173,7 +947,7 @@ public class TickInstaller : InstallerBehaviourBase
 }
 
 // 2. Player controller
-public class PlayerController : MonoBehaviour, ITickable, ILateTickable
+public class PlayerController : BehaviourBase, ITickable, ILateTickable
 {
     [Inject] private Ticker _ticker;
     [Inject] private InputService _input;
@@ -1415,38 +1189,6 @@ public class TickPerformanceMonitor : MonoBehaviour
     }
 
     // Note: This would require extending Ticker to report timings
-}
-```
-
-### Scene Transition with Ticker Cleanup
-
-```csharp
-public class SceneLoader : MonoBehaviour
-{
-    [Inject] private Ticker _ticker;
-
-    public void LoadScene(string sceneName)
-    {
-        StartCoroutine(LoadSceneAsync(sceneName));
-    }
-
-    private IEnumerator LoadSceneAsync(string sceneName)
-    {
-        // Unload current scene
-        var unloadOp = SceneManager.UnloadSceneAsync(SceneManager.GetActiveScene());
-        yield return unloadOp;
-
-        // Clear scene-specific tickables
-        // Note: Would need Ticker to support filtering/grouping
-
-        // Load new scene
-        var loadOp = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-        yield return loadOp;
-
-        SceneManager.SetActiveScene(SceneManager.GetSceneByName(sceneName));
-
-        // New scene's tickables will register themselves
-    }
 }
 ```
 

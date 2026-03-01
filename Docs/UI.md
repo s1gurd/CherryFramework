@@ -21,6 +21,8 @@
 
 The CherryFramework UI system provides a comprehensive, modular approach to building user interfaces in Unity. It implements a variant of the MVVM (Model-View-ViewModel) pattern with a focus on navigation, state management, and animation.
 
+**Please see the Sample (`Assets/Sample/Scenes/dinoscene.unity`, GameObject `UIRoot`) for details how to setup the sytem! It is pretty easy and straightforward.**
+
 ### Key Features
 
 - **View Service**: Centralized navigation and view stack management
@@ -52,7 +54,7 @@ The CherryFramework UI system provides a comprehensive, modular approach to buil
 ┌─────────────────────────────────────────────────────────────────┐
 │                         ViewService                             │
 │  - Manages view stack                                           │
-│  - Handles navigation (Push/Pop)                                │
+│  - Handles navigation (Pop/Back)                                │
 │  - Tracks active view                                           │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -68,7 +70,7 @@ The CherryFramework UI system provides a comprehensive, modular approach to buil
               │                   ┌───────────┴───────────┐
               │                   ▼                       ▼
               │       ┌─────────────────┐     ┌─────────────────┐
-              │       │  WidgetBase     │     │  WidgetElement  │
+              │       │  WidgetBase     │────▶│  WidgetElement  │
               │       │ - Multiple states     │ - Single element│
               │       │ - State machine │     │ - Show/Hide     │
               │       └─────────────────┘     └─────────────────┘
@@ -253,7 +255,7 @@ public class GameUI : MonoBehaviour
 
 **Namespace**: `CherryFramework.UI.InteractiveElements.Presenters`
 
-**Purpose**: Base class for all screen-level UI components. Manages child presenters, animations, and view hierarchy.
+**Purpose**: Base class for all screen-level UI components. Manages child presenters, animations, and view hierarchy. All child presenters must added to childPresenters manually in the Editor
 
 ```csharp
 public abstract class PresenterBase : InteractiveElementBase
@@ -320,7 +322,7 @@ public class MainMenuPresenter : PresenterBase
 
 **Namespace**: `CherryFramework.UI.Views`
 
-**Purpose**: Root container that holds all presenters and provides access to special screens.
+**Purpose**: Root container that holds all presenters and provides access to special screens. All child presenters must added to childPresenters manually in the Editor
 
 ```csharp
 public class RootPresenterBase : PresenterBase
@@ -518,6 +520,21 @@ public class WidgetState
 //   - PressedLabel (WidgetElement)
 ```
 
+### WidgetStartupBehaviour
+
+**Namespace**: `CherryFramework.UI.InteractiveElements.Widgets`
+
+**Purpose**: Determines how the widget initializes its states.
+
+| Value                                            | Description                            |
+| ------------------------------------------------ | -------------------------------------- |
+| `ExecuteShowOnCurrentState`                      | Only show the current state            |
+| `SimultaneouslyExecuteShowOnSelfAndCurrentState` | Show widget and current state together |
+| `SequentiallyExecuteShowOnSelfAndCurrentState`   | Show widget, then current state        |
+| `JustSetCurrentState`                            | Set state without animations           |
+
+---
+
 ### WidgetElement
 
 **Namespace**: `CherryFramework.UI.InteractiveElements.Widgets`
@@ -561,19 +578,6 @@ public class AnimatedIcon : WidgetElement
     }
 }
 ```
-
-### WidgetStartupBehaviour
-
-**Namespace**: `CherryFramework.UI.InteractiveElements.Widgets`
-
-**Purpose**: Determines how the widget initializes its states.
-
-| Value                                            | Description                            |
-| ------------------------------------------------ | -------------------------------------- |
-| `ExecuteShowOnCurrentState`                      | Only show the current state            |
-| `SimultaneouslyExecuteShowOnSelfAndCurrentState` | Show widget and current state together |
-| `SequentiallyExecuteShowOnSelfAndCurrentState`   | Show widget, then current state        |
-| `JustSetCurrentState`                            | Set state without animations           |
 
 ---
 
@@ -818,7 +822,7 @@ public class UiActive : UiAnimationBase
 ```csharp
 public class AnimatedPanel : InteractiveElementBase
 {
-    [SerializeField] private List<UiAnimationSettings> _customAnimations;
+    [SerializeField] private List<UiAnimationSettings> _customAnimations; // Fill in the Editor
 
     protected override void OnShowStart()
     {
@@ -902,13 +906,13 @@ public Sequence ShowAll()
     return seq;
 }
 
-// BAD - Sequential animations for many elements
+// BAD - Simultaneous animations for many elements
 public Sequence ShowAllSequential()
 {
     var seq = DOTween.Sequence();
     foreach (var element in _elements)
     {
-        seq.Append(element.Show()); // Plays one after another - slow!
+        seq.Insert(0f, element.Show()); // Plays one after another - slow!
     }
     return seq;
 }
@@ -923,7 +927,7 @@ public class SimpleButton : WidgetBase
     [SerializeField] private List<WidgetState> _states; // 2-3 states
 }
 
-// BAD - Too many states
+// BAD - Too many states, consider using nested widgets
 public class ComplexWidget : WidgetBase
 {
     [SerializeField] private List<WidgetState> _states; // 20+ states - hard to manage
@@ -936,14 +940,13 @@ public class ComplexWidget : WidgetBase
 
 ### Issue 1: Presenter Not Showing
 
-**Symptoms**: `PopView()` called but nothing appears
+**Symptoms**: `PopView()` called but nothing appears, or errors are displayed in Console
 
 **Solutions**:
 
 ```csharp
 // SOLUTION 1: Ensure presenter is registered
-public class MyInstaller : InstallerBehaviourBase
-{
+public class MyInstaller : InstallerBehaviourBase{
     [SerializeField] private RootPresenterBase _root;
 
     protected override void Install()
@@ -956,16 +959,10 @@ public class MyInstaller : InstallerBehaviourBase
 // SOLUTION 2: Check if view exists in container
 public bool CanShowPresenter<T>() where T : PresenterBase
 {
-    var root = DependencyContainer.Instance.GetInstance<RootPresenterBase>();
+    var root = FindObjectOfType<RootPresenter>();
     return root.ChildPresenters.Any(p => p is T);
 }
 
-// SOLUTION 3: Debug view path
-_viewService.PopView<MyPresenter>((seq) => {
-    Debug.Log("Show sequence completed");
-}, (error) => {
-    Debug.LogError($"Failed to show presenter: {error}");
-});
 ```
 
 ### Issue 2: Modal Blocks Navigation
@@ -997,95 +994,6 @@ public class ModalPresenter : PresenterBase
 // {
 //     return; // Navigation blocked
 // }
-```
-
-### Issue 3: Populator Elements Not Updating
-
-**Symptoms**: List shows old data, new items don't appear
-
-**Solutions**:
-
-```csharp
-public class ReliablePopulator<T> : PopulatorBase<T> where T : class
-{
-    public void ForceRefresh()
-    {
-        // Clear and repopulate
-        Clear();
-        UpdateElements(Data, 0);
-    }
-
-    public void UpdateItem(int index, T newData)
-    {
-        if (index >= 0 && index < active.Count)
-        {
-            active[index].SetData(newData);
-            active[index].Refresh();
-        }
-    }
-}
-
-// Usage
-_populator.UpdateItem(3, updatedItem);
-```
-
-### Issue 4: Animation Conflicts
-
-**Symptoms**: Elements jumping, wrong final positions
-
-**Solutions**:
-
-```csharp
-public class SafeAnimator : UiAnimationBase
-{
-    private Vector3 _cachedPosition;
-
-    protected override void OnInitialize()
-    {
-        _cachedPosition = Target.anchoredPosition;
-    }
-
-    public override Sequence Show(float delay = 0f)
-    {
-        // Kill any existing animations on this target
-        DOTween.Kill(Target);
-
-        // Reset to start position
-        Target.anchoredPosition = _cachedPosition;
-
-        return base.Show(delay);
-    }
-}
-```
-
-### Issue 5: Memory Leaks in Populators
-
-**Symptoms**: Memory usage grows over time, elements not destroyed
-
-**Solution**:
-
-```csharp
-public class CleanupPopulator<T> : PopulatorBase<T> where T : class
-{
-    public void Destroy()
-    {
-        Clear();
-
-        // Also destroy the pool
-        var field = typeof(PopulatorBase<T>).GetField("_populatorPool", 
-            System.Reflection.BindingFlags.NonPublic | 
-            System.Reflection.BindingFlags.Instance);
-
-        var pool = field?.GetValue(this);
-        pool?.GetType().GetMethod("Clear")?.Invoke(pool, null);
-    }
-}
-
-// Usage
-private void OnDestroy()
-{
-    _populator?.Destroy();
-}
 ```
 
 ---
@@ -1577,25 +1485,27 @@ public class GameController : MonoBehaviour
 
 ### Key Points
 
-| #   | Key Point                                     | Why It Matters                                  |
-| --- | --------------------------------------------- | ----------------------------------------------- |
-| 1   | **ViewService manages a stack of presenters** | Enables back navigation and view history        |
-| 2   | **Presenters can have child presenters**      | Creates hierarchical UI structures              |
-| 3   | **Modal presenters block back navigation**    | Ensures modal dialogs behave correctly          |
-| 4   | **Widgets maintain multiple visual states**   | Perfect for buttons, toggles, status indicators |
-| 5   | **Populators use object pooling**             | Efficient rendering of large lists              |
-| 6   | **Animations are declarative and sequenced**  | Complex transitions with minimal code           |
-| 7   | **All UI components are injectable**          | Seamless integration with DI container          |
-| 8   | **Loading and error screens are built-in**    | Consistent user experience                      |
+| #   | Key Point                                     | Why It Matters                                        |
+| --- | --------------------------------------------- | ----------------------------------------------------- |
+| 1   | **ViewService manages a stack of presenters** | Enables back navigation and view history              |
+| 2   | **Presenters can have child presenters**      | Creates hierarchical UI structures                    |
+| 3   | **Modal presenters block back navigation**    | Ensures modal dialogs behave correctly                |
+| 4   | **Widgets maintain multiple visual states**   | Perfect for tabs, buttons, toggles, status indicators |
+| 5   | **Populators use object pooling**             | Efficient rendering of large lists                    |
+| 6   | **Animations are declarative and sequenced**  | Complex transitions with minimal code                 |
+| 7   | **All UI components are injectable**          | Seamless integration with DI container                |
+| 8   | **Loading and error screens are built-in**    | Consistent user experience                            |
 
 ### When to Use Each Component
 
-| Component          | Use When                                                 |
-| ------------------ | -------------------------------------------------------- |
-| `PresenterBase`    | Creating a new screen/menu                               |
-| `WidgetBase`       | Building reusable components with multiple states        |
-| `WidgetElement`    | Creating individual UI pieces                            |
-| `PopulatorBase<T>` | Displaying dynamic lists (inventory, shop, leaderboards) |
-| Custom Animator    | Creating unique transition effects                       |
+| Component          | Use When                                                  |
+| ------------------ | --------------------------------------------------------- |
+| `PresenterBase`    | Creating a new screen/menu                                |
+| `WidgetBase`       | Building reusable components with multiple states         |
+| `WidgetElement`    | Creating individual UI pieces |
+| `PopulatorBase<T>` | Displaying dynamic lists (inventory, shop, leaderboards)  |
+| Custom Animator    | Creating unique transition effects                        |
 
 The CherryFramework UI system provides a robust, scalable foundation for building complex user interfaces with clean separation of concerns, efficient rendering, and smooth animations.
+
+

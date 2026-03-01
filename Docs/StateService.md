@@ -74,8 +74,8 @@ The CherryFramework StateService provides a powerful event and state management 
             ▼                 ▼                 ▼
     ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
     │ BasicEvent    │ │ StateStatus   │ │ Condition     │
-    │PayloadEvent<T>│ │ - EmitFrame   │ │ Callback      │
-    │ - EmitFrame   │ │               │ │ DestroyAfter  │
+    │PayloadEvent<T>│ │ - EmitTime    │ │ Callback      │
+    │ - EmitTime    │ │               │ │ DestroyAfter  │
     └───────────────┘ └───────────────┘ └───────────────┘
 ```
 
@@ -98,7 +98,7 @@ Subscriptions are tied to subscriber objects for automatic cleanup:
 _stateService.AddStateSubscription(
     accessor => accessor.IsEventActive("GameStarted"),
     () => Debug.Log("Game started!"),
-    this // Will auto-unsubscribe when this object is destroyed
+    this // Will auto-unsubscribe when this object is destroyed. If the object inherits from BehaviourBase or GeneralClassBase, this is handled automatically
 );
 ```
 
@@ -248,7 +248,7 @@ public EventBase GetEvent(string key)
 var evt = stateService.GetEvent("PlayerDied");
 if (evt != null)
 {
-    Debug.Log($"Player died at frame {evt.EmitFrame}");
+    Debug.Log($"Player died at time {evt.EmitTime}");
 }
 ```
 
@@ -379,7 +379,7 @@ public StateStatus GetStatus(string key)
 var status = stateService.GetStatus("BossFightActive");
 if (status != null)
 {
-    Debug.Log($"Boss fight active for {Time.frameCount - status.EmitFrame} frames");
+    Debug.Log($"Boss fight active for {Time.time - status.EmitTime } seconds");
 }
 ```
 
@@ -528,11 +528,11 @@ _stateService.AddStateSubscription(
 ```csharp
 public abstract class EventBase
 {
-    public int EmitFrame; // Frame number when event was emitted
+    public int EmitTime; // Time in seconds when event was emitted
 
-    protected EventBase(int emitFrame)
+    protected EventBase(int emitTime)
     {
-        EmitFrame = emitFrame;
+        EmitTime = emitTime;
     }
 }
 ```
@@ -548,7 +548,7 @@ public class PayloadEvent<T> : EventBase
 {
     public T Payload;
 
-    public PayloadEvent(T payload, int emitFrame) : base(emitFrame)
+    public PayloadEvent(T payload, int emitTime) : base(emitTime)
     {
         Payload = payload;
     }
@@ -691,11 +691,11 @@ public class MyClass : GeneralClassBase // Auto-cleans on Dispose
 
 ### 5. Event History
 
-Past events are kept indefinitely. For long-running applications, consider cleanup:
+Past events are kept indefinitely. For long-running applications (hours or so) with multiple (hundreds or more) unique events, consider cleanup:
 
 ```csharp
 // If needed, you could extend StateService with cleanup methods
-public void ClearEventsOlderThan(int frames)
+public void ClearEventsOlderThan(int seconds)
 {
     // Custom cleanup logic
 }
@@ -724,7 +724,7 @@ public class SafeSubscriber : InjectClass
 {
     [Inject] private StateService _stateService;
 
-    public SafeSubscriber()
+    public SafeSubscriber() : base()
     {
         // Subscribe in constructor - runs before any events
         _stateService.AddStateSubscription(
@@ -768,7 +768,7 @@ public class CleanClass : GeneralClassBase // Auto-cleans on Dispose
 }
 
 // SOLUTION 2: Manual cleanup
-public class ManualCleanup : MonoBehaviour
+public class ManualCleanup : MonoBehaviour, IInjectTarget
 {
     [Inject] private StateService _stateService;
     private StateSubscription _subscription;
@@ -1605,7 +1605,7 @@ public class TutorialSystem : BehaviourBase
 
 ## Summary
 
-### ### Method Summary
+### Method Summary
 
 | Category          | Method                                                  | Description                            |
 | ----------------- | ------------------------------------------------------- | -------------------------------------- |
@@ -1632,7 +1632,7 @@ public class TutorialSystem : BehaviourBase
 | 3   | **Conditions use StateAccessor, not direct StateService** | Encapsulation and controlled API                |
 | 4   | **JustBecameActive/Inactive detect transitions**          | Perfect for one-time reactions to state changes |
 | 5   | **Payload events are type-safe**                          | Pass complex data without casting               |
-| 6   | **Frame numbers are tracked**                             | Useful for debugging and time-based logic       |
+| 6   | Emit times are tracked**                                  | Useful for debugging and time-based logic       |
 | 7   | **Debug mode logs all events and status changes**         | Invaluable for development                      |
 | 8   | **Subscriptions can be one-time**                         | Auto-remove after first trigger                 |
 

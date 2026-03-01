@@ -28,7 +28,7 @@ namespace Sample
         
         private PersistentObject _persistentObject;
         
-        void Start()
+        private void Start()
         {
             LeftEdge = _camera.ScreenToWorldPoint(Vector3.zero).x - 2f;
         }
