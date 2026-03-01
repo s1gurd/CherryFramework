@@ -8,7 +8,7 @@ This sample project demonstrates the practical implementation of the CherryFrame
 
 **Endless Runner** is a simple yet complete game where players control a character that automatically runs forward, jumping over obstacles to survive as long as possible. The game increases in difficulty over time, features power-ups, and tracks player statistics across multiple sessions.
 
-**Start Scene**: `Sample/Scenes/dinoscene.unity`
+**Start Scene**: `Sample/Scenes/dinoscene.unity` Please read the [scene structure overview](Scene.md)
 
 ---
 
