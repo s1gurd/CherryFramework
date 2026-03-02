@@ -36,7 +36,7 @@ namespace {ModelsPathAndNamespace}
     [Serializable]
     public class {ModelNamePlaceholder} : DataModelBase
     {{
-        private {TemplateNamePlaceholder} _template = new();
+        private {TemplateNamePlaceholder} _template;
         
         public {ModelNamePlaceholder}() : base()
         {{

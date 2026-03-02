@@ -46,6 +46,7 @@ namespace CherryFramework.DataModels.Editor
                 var props = new StringBuilder();
                 var fields = template.GetFields();
 
+                ctor.Append("\t\t\t_template = new();\n");
                 foreach (var field in fields)
                 {
                     var attributes = field.CustomAttributes;

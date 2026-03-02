@@ -13,10 +13,11 @@ namespace GeneratedDataModels
     [Serializable]
     public class ExampleDataModel : DataModelBase
     {
-        private ExampleData _template = new();
+        private ExampleData _template;
         
         public ExampleDataModel() : base()
         {
+			_template = new();
 			Getters.Add(nameof(Foo), new Func<System.String>(() => Foo));
 			Setters.Add(nameof(Foo), new Action<System.String>(o => Foo = o));
 			FooAccessor = new Accessor<System.String>(this, nameof(Foo));

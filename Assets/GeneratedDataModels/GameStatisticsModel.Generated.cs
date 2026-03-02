@@ -13,10 +13,11 @@ namespace GeneratedDataModels
     [Serializable]
     public class GameStatisticsModel : DataModelBase
     {
-        private GameStatistics _template = new();
+        private GameStatistics _template;
         
         public GameStatisticsModel() : base()
         {
+			_template = new();
 			Getters.Add(nameof(GameRunning), new Func<System.Boolean>(() => GameRunning));
 			Setters.Add(nameof(GameRunning), new Action<System.Boolean>(o => GameRunning = o));
 			GameRunningAccessor = new Accessor<System.Boolean>(this, nameof(GameRunning));
