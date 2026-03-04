@@ -118,19 +118,16 @@ namespace CherryFramework.SoundService
 
             if (evt.rolloffMode == AudioRolloffMode.Custom)
                 source.SetCustomCurve(AudioSourceCurveType.CustomRolloff, evt.volumeCurve);
-
             
-            var seq = DOTween.Sequence();
-            seq.PrependInterval(delay);
-            seq.AppendCallback(() =>
+            if (!emitter.SafeIsUnityNull() && emitter.gameObject.activeInHierarchy)
             {
-                if (!emitter.SafeIsUnityNull() && emitter.gameObject.activeInHierarchy)
-                {
-                    PlayStart(evt, emitter, delay, handler, onPlayStart);
-                }
-            });
+                PlayStart(delay, onPlayStart);
+            }
             _isWaiting = delay > 0f;
+            
+            #if UNITY_EDITOR
             gameObject.name = $"Sound - {evt.eventKey}";
+            #endif
         }
 
         public void Stop(float delay = 0f)
@@ -235,12 +232,20 @@ namespace CherryFramework.SoundService
             _onStop = null;
         }
 
-        private void PlayStart(AudioEvent evt, Transform emitter, float delay, uint handler, Action onPlayStart)
+        private void PlayStart(float delay, Action onPlayStart)
         {
             _isPlaying = true;
             _isWaiting = false;
 
-            source.Play();
+            if (delay > 0f)
+            {
+                source.PlayDelayed(delay);
+            }
+            else
+            {
+                source.Play();
+            }
+            
             onPlayStart?.Invoke();
         }
 
