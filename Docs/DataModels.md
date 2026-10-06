@@ -30,7 +30,7 @@ The CherryFramework Data Models system provides a robust, observable data layer 
 - **Transient Models**: Short-lived, ID-keyed model instances managed by `ModelService`
 - **Code Generation**: Auto-create model classes from templates, including generic templates
 - **Singleton Management**: Global model instances
-- **Type Safety**: Generic accessors and bindings
+- **Typed Accessors**: `Accessor<T>` is typed per member, so a binding callback receives a real `int`, not `object`
 
 ---
 
@@ -112,7 +112,8 @@ public class GameInstaller : InstallerBehaviourBase
         // for ModelService and SaveGameManager so both see the same data)
         var playerPrefs = new PlayerPrefsData();
 
-        // Create storage bridge (IPlayerPrefs is injected via constructor)
+        // Create storage bridge. This is a plain constructor argument, not DI -
+        // `[Inject]` means something different in this framework.
         var bridge = new PlayerPrefsBridge(playerPrefs);
 
         // Create model service with bridge
@@ -730,8 +731,7 @@ public abstract class ModelDataStorageBridgeBase
 **Namespace**: `CherryFramework.DataModels.ModelDataStorageBridges`
 
 **Purpose**: Concrete implementation using Unity PlayerPrefs with JSON serialization.
-The `IPlayerPrefs` implementation is injected via the constructor, so the same
-instance can be shared with other services (e.g. `SaveGameManager`).
+The `IPlayerPrefs` implementation is passed as a plain constructor argument (this is **not** dependency injection - `[Inject]` means something else in this framework), so the same instance can be shared with other services such as `SaveGameManager`.
 
 ```csharp
 public class PlayerPrefsBridge : ModelDataStorageBridgeBase

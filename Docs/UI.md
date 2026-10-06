@@ -21,7 +21,9 @@
 
 The CherryFramework UI system provides a comprehensive, modular approach to building user interfaces in Unity. It implements a variant of the MVVM (Model-View-ViewModel) pattern with a focus on navigation, state management, and animation.
 
-**Please see the Sample (`Assets/Sample/Scenes/dinoscene.unity`, GameObject `UIRoot`) for details how to setup the sytem! It is pretty easy and straightforward.**
+**The Sample has a working setup you can copy:** open
+`Assets/Sample/Scenes/dinoscene.unity` and look at the `UIRoot` GameObject.
+`Assets/Sample/Scene.md` documents every component on it, field by field.
 
 ### Key Features
 
@@ -1610,41 +1612,7 @@ public class GameController : MonoBehaviour
 
 ## Summary
 
-### Architecture Diagram Recap
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         ViewService                             │
-│                         (Navigation)                            │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-┌─────────────────────────┐       ┌─────────────────────────┐
-│    RootPresenterBase    │──────▶│    PresenterBase        │
-│    (Container)          │       │    (Screen)             │
-└─────────────────────────┘       └─────────────────────────┘
-                                            │
-                            ┌───────────────┴───────────────┐
-                            ▼                               ▼
-                ┌─────────────────┐              ┌─────────────────┐
-                │   WidgetBase    │              │  PopulatorBase  │
-                │   (Stateful)    │              │   (Dynamic)     │
-                └─────────────────┘              └─────────────────┘
-                        │                                  │
-                        ▼                                  ▼
-                ┌─────────────────┐              ┌─────────────────┐
-                │  WidgetElement  │              │PopulatorElement │
-                │   (Element)     │              │    (Element)    │
-                └─────────────────┘              └─────────────────┘
-                        │                                  │
-                        └───────────────┬──────────────────┘
-                                        ▼
-                               ┌─────────────────┐
-                               │ UiAnimationBase │
-                               │  (Animation)    │
-                               └─────────────────┘
-```
+The architecture diagram is in [Core Concepts](#architecture-diagram).
 
 ### Key Components Summary
 

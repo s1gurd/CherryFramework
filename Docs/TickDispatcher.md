@@ -35,7 +35,7 @@ The CherryFramework TickDispatcher provides a centralized update management syst
 - **Automatic Cleanup**: Subscriptions auto-remove when objects are destroyed
 - **Activity Checking**: Optional MonoBehaviour activity validation
 - **Centralized Management**: Single point of control for all updates
-- **Type-Safe Interfaces**: Separate interfaces for different update types
+- **Separate Interfaces Per Phase**: one interface for each update phase, so you implement only what you need
 - **Performance Optimized**: Only tick when needed, based on time elapsed
 
 ### Architecture Diagram

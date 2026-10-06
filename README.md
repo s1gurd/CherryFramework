@@ -395,7 +395,7 @@ public class MainMenuPresenter : PresenterBase
 
 ### 5. [Audio System](Docs/SoundService.md)
 
-A lightweight, event-based audio system with 3D spatial support and automatic pooling.
+A thin wrapper over Unity's `AudioSource`: look a sound up by a string key, the framework plays it through a pooled emitter, with 3D spatial support.
 
 **Key Features**:
 
@@ -519,7 +519,7 @@ A generic pooling system for performance-critical objects.
 
 **Key Features**:
 
-- Type-safe generic implementation
+- Pool parameterised by a component type `T`
 - Per-sample pooling (separate pools for different prefabs)
 - Automatic instance creation when pool empty
 - Active object tracking

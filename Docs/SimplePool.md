@@ -16,7 +16,9 @@
 
 ## Overview
 
-The CherryFramework `SimplePool<T>` provides a lightweight, type-safe object pooling system for Unity components. Object pooling reuses objects instead of creating and destroying them repeatedly, which is essential for performance-critical scenarios like spawning bullets, enemies, or visual effects.
+The CherryFramework `SimplePool<T>` is a small object pool parameterised by a component type `T`. It reuses objects instead of creating and destroying them repeatedly, which matters for anything spawned often - bullets, enemies, visual effects.
+
+One thing to know up front: the pool is keyed by **reference**, not by type. Passing the same prefab field twice gives one pool; passing `Instantiate(prefab)` gives a brand new pool.
 
 ### Why Use Object Pooling?
 
@@ -967,30 +969,6 @@ public class GameEvents : MonoBehaviour
 ---
 
 ## Summary
-
-### Architecture Diagram Recap
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      SimplePool<T>                          │
-├─────────────────────────────────────────────────────────────┤
-│ - Dictionary<T, List<T>> _pool                              │
-│                                                             │
-│ + Get(T sample)                                 ←───┐       │
-│ + Get(T sample, position, rotation)                 │       │
-│ + List<T> ActiveObjects(T sample)                   │ Uses  │
-│ + void Clear()                                  ←───┘       │
-└─────────────────────────────────────────────────────────────┘
-         │                          │
-         │ One pool per             │ Tracks
-         │ prefab type              │
-         ▼                          ▼
-┌─────────────────┐        ┌─────────────────┐
-│  List of objects│        │ Active objects  │
-│  for Prefab A   │        │   for Prefab A  │
-│  [obj1, obj2...]│        │   [obj3, obj5]  │
-└─────────────────┘        └─────────────────┘
-```
 
 ### Method Summary
 

@@ -19,7 +19,7 @@
 
 ## Overview
 
-The CherryFramework SoundService provides a lightweight, event-based audio system for Unity applications. It's designed as a simple yet powerful alternative when integrating full-featured audio middleware like Wwise or FMOD would be overkill or too complex for your project.
+The CherryFramework SoundService is a thin layer over Unity's `AudioSource`: you look a sound up by a string key, the framework pulls the settings from an `AudioEvent` and plays it through a pooled `AudioEmitter`. It is a simpler alternative to full audio middleware like Wwise or FMOD.
 
 ### When to Use SoundService
 
@@ -43,6 +43,30 @@ The CherryFramework SoundService provides a lightweight, event-based audio syste
 - **Resource-Based Audio**: Uses Unity's AudioResource system
 
 ---
+
+### The Unity Audio Vocabulary
+
+The whole system is built on four Unity types. If these are new to you, this
+table is worth two minutes.
+
+| Unity type | What it is | Where it shows up here |
+| ---------- | ---------- | ---------------------- |
+| `AudioClip` | the raw sound file (`.wav`, `.ogg`) | loaded through an `AudioResource` |
+| `AudioSource` | the component that actually **plays** a clip | one per `AudioEmitter` |
+| `AudioMixer` / `AudioMixerGroup` | the routing and volume bus | `AudioEvent.output` sends a sound to a group |
+| `AudioResource` | a serializable container that loads the clip for you | assigned per `AudioEvent` |
+
+Two `AudioSource` settings decide whether a sound is 2D or 3D:
+
+- **`spatialBlend`**: `0` ignores the camera position entirely (UI, music,
+  stings - always heard at full volume), `1` attenuates with distance.
+- **`rolloffMode`, `minDistance`, `maxDistance`**: how the volume falls off.
+  With `spatialBlend = 0` none of it matters.
+
+`AudioEventsCollection` and `GlobalAudioSettings` are **ScriptableObjects** -
+assets you create once via `Assets → Create →` and then reference from the
+scene. They are not MonoBehaviours and never exist at runtime as components;
+that is why the `SoundService` constructor takes them as parameters.
 
 ## Core Concepts
 
@@ -518,6 +542,18 @@ public class AudioEventsCollection : ScriptableObject
    - Volume, pitch, spatial settings
    - 3D positioning options
 
+You also need **one** `GlobalAudioSettings` asset (**Audio/Sound Service →
+Settings**). `SoundService` takes both in its constructor, and its
+`emitterSample` field must point at an `AudioEmitter` prefab - the project
+already ships one at `Assets/CherryFramework/SoundService/AudioEmitter.prefab`,
+whose child `AudioSource` is already wired up. Without it,
+`source.volume` throws inside the emitter.
+
+A ready-made pair exists in the Sample:
+`Assets/Sample/Settings/AudioSettings.asset` and
+`Assets/Sample/Settings/AudioEventsCollection.asset` (keys `jump` and
+`gameover`).
+
 ### Example Project Structure
 
 ```
@@ -972,6 +1008,13 @@ public class CategoryVolume : BehaviourBase
 
 ### Complete Audio System Setup
 
+The keys below (`music_main`, `player_shoot`, `player_jump`, ...) are ones **you
+would add to your own collections**. The Sample's collection only contains
+`jump` and `gameover` - if you copy this block and hear nothing, check that the
+key exists in one of your `AudioEventsCollection` assets. `Play` returns `0`
+and logs `[Sound System] No sound event with the name X found!` when it does
+not.
+
 ```csharp
 // 1. Create your AudioEventsCollection assets in the Editor
 // Assets/Audio/Collections/SFX_Collection.asset
@@ -1027,7 +1070,10 @@ public class AudioManager : BehaviourBase
             _soundService.FadeOut(_loopingSounds["music"], 1f);
         }
 
-        uint handler = _soundService.FadeIn(musicKey, null, 2f);
+        // The emitter Transform is required - passing null throws inside
+        // AudioEmitter.SetTransformation(). For music, pass the transform that
+        // owns the sound (here: this component) and set spatialBlend = 0.
+        uint handler = _soundService.FadeIn(musicKey, transform, 2f);
         _loopingSounds["music"] = handler;
     }
 

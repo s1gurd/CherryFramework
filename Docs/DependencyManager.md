@@ -21,7 +21,7 @@
 
 ## Overview
 
-The CherryFramework DependencyManager provides a lightweight dependency injection (DI) container that simplifies service location and promotes loose coupling throughout your application. It supports both singleton and transient lifestyles, with automatic injection into any class deriving from `InjectClass` or `InjectMonoBehaviour`.
+The CherryFramework DependencyManager is a small dependency injection (DI) container: you register instances once in an installer, and any class with `[Inject]` fields receives them automatically. It supports singleton and transient bindings, and injects automatically into anything deriving from `InjectClass` or `InjectMonoBehaviour`.
 
 ### Why Use Dependency Injection?
 
@@ -99,7 +99,7 @@ instance (`BindAsSingleton(new FileLogger("game.log"))`) rather than by type.
 - **Multiple Lifestyles**: Singleton and transient binding support
 - **MonoBehaviour Support**: Special handling for Unity components
 - **Hierarchical Injection**: Base class dependencies are also injected
-- **Type Safety**: Generic binding methods
+- **Generic Binding Methods**: bind a concrete type to an interface with two type parameters
 - **Automatic Cleanup**: Dependencies can be removed when no longer needed
 
 ### Important Requirements
