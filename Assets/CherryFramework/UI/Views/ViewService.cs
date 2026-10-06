@@ -105,7 +105,7 @@ namespace CherryFramework.UI.Views
                 return DOTween.Sequence();;
             }
 
-            return PopView(newViewSource, out newView, mountingPoint, skipAnimation);
+            return PopView(newViewSource, out newView, mountingPoint, skipAnimation, readyAccessor);
         }
 
         public virtual Sequence PopView(PresenterBase view, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)

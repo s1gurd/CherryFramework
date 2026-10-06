@@ -101,7 +101,11 @@ namespace CherryFramework.SoundService
                 return;
             }
             
-            emitter.FadeOut(duration);
+            // AudioEmitter has two overloads: FadeOut(float fadeOutDuration, float delay)
+// and FadeOut(float delay = 0f). Passing a single argument binds to the
+// *delay* overload, so FadeOut(handler, 2f) used to wait two seconds and then
+// fade with the default duration. Be explicit about both parameters.
+emitter.FadeOut(duration, 0f);
         }
 
         public void StopAll()

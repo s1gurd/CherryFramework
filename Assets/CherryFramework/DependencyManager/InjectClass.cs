@@ -1,6 +1,6 @@
 ﻿namespace CherryFramework.DependencyManager
 {
-    public abstract class InjectClass : IInjectTarget
+    public abstract class InjectClass
     {
         private bool _injected;
 

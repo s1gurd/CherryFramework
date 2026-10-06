@@ -124,10 +124,22 @@ soundService.Play("explosion_large", explosionPosition, delay: 0.5f);
 Each played sound receives a unique handler ID for individual control:
 
 ```csharp
-uint handler = soundService.Play("music_background", null);
+// The emitter Transform is REQUIRED - passing null throws
+// NullReferenceException inside AudioEmitter.SetTransformation().
+uint handler = soundService.Play("music_background", transform);
 // Later...
-soundService.FadeOut(handler, duration: 2f);
+soundService.FadeOut(handler, duration: 2f); // fades over 2 seconds
 ```
+
+For a 2D sound - music, UI clicks - pass the transform of the thing that owns
+it (the camera, a UI panel, or `this.gameObject.transform`). Set
+`spatialBlend = 0` on the event so Unity ignores the distance, and
+`positionToListener` / `orientToListener` to `0` to keep the source glued to
+that transform.
+
+**`emitter` may not be null.** `AudioEmitter` stores it and immediately
+dereferences `_emitterTransform.position` in `SetTransformation()`, with no null
+guard. There is no "no position" option.
 
 ### Positioning Modes
 
@@ -135,7 +147,17 @@ soundService.FadeOut(handler, duration: 2f);
 | ----- | ----------------- | -------------------- |
 | 0     | At emitter object | As emitter object    |
 | 0.5   | Halfway to camera | Blended orientation  |
-| 1     | At camera         | Facing camera        |
+| 1     | At camera         | Blended orientation  |
+
+The ratios are `Vector3.Lerp` weights between the emitter and the
+`ListenerCamera`. Two special cases short-circuit the per-frame update and
+re-parent the source outright:
+
+- both ratios `0` → the source is parented to the emitter
+- both ratios `1` → the source is parented to the camera
+
+Orientation blends towards the camera's **rotation**, so at ratio 1 the source
+takes the camera's orientation rather than turning to face it.
 
 ---
 
@@ -417,12 +439,14 @@ emitter.PlayEvent(audioEvent, transform, 0f, handlerId, onComplete);
 
 ```csharp
 public void FadeOut(float fadeOutDuration, float delay)
+public void FadeOut(float delay = 0f)   // <-- easy to bind by mistake
 ```
 
 **Example**:
 
 ```csharp
-emitter.FadeOut(1.5f, 0f); // Fade out over 1.5 seconds
+emitter.FadeOut(1.5f, 0f); // fade out over 1.5 seconds
+emitter.FadeOut(0.5f);      // wait 0.5 s, then use the event's fade duration
 ```
 
 #### Stop
@@ -522,6 +546,33 @@ Assets/
 
 ---
 
+## Performance Considerations
+
+**Emitters are pooled, and they deactivate themselves.** `SoundService`
+keeps a `SimplePool<AudioEmitter>` and `AudioEmitter` sets its GameObject
+inactive when the clip finishes. A pooled instance is therefore reused for the
+next `Play` - you do not create or destroy emitters by hand.
+
+**`Get` does not activate.** The pooled emitter comes back **inactive**. If you
+ever call `GetEmitter(...)` / `GetEmitters(...)` directly and then expect it to
+play, you must call `gameObject.SetActive(true)` yourself. Going through
+`SoundService.Play` handles this for you.
+
+**Keep the pool bounded.** `SimplePool` has no built-in limit - it grows to the
+high-water mark of simultaneously playing sounds and keeps them. For a busy
+game that is fine; if you need a cap, count your own handlers and stop the
+oldest (see `SimplePool.md` for the wrapper pattern).
+
+**Looping sounds never return to the pool** until you stop them - an emitter
+with `loop = true` stays active for as long as it runs. Make sure every looping
+sound is stopped when it should end, or the pool will hold on to it forever.
+
+**Check the handler.** `Play` returns `0` when the event key was not found, and
+`_currentHandler` starts at `0` too, so `if (handler != 0)` guards against
+silently doing nothing.
+
+---
+
 ## Common Issues and Solutions
 
 ### Issue 1: Sound Not Playing, Error Are Firing in Console
@@ -576,18 +627,35 @@ public void PlayOneShot(string eventName, Transform emitter)
 }
 ```
 
-### Issue 4: Memory Leaks
+### Issue 4: Emitters Left Alive
 
-**Solution**: Clear pools on destroy
+`SoundService.Dispose()` is `override` and does **not** stop sounds - it only
+unbinds `GlobalAudioSettings` and `ListenerCamera` from the DI container and
+calls `base.Dispose()`. The `_emitters` pool is private, so the documented
+"fix" would not compile even if it were inside `SoundService`:
 
 ```csharp
+// WRONG - _emitters is private, and Dispose does not call StopAll()
 public override void Dispose()
 {
     StopAll();
-    _emitters.Clear();
+    _emitters.Clear();   // CS0122
     base.Dispose();
 }
 ```
+
+What to do instead: call `StopAll()` yourself before disposing, and clear the
+pool through the public `Clear()` if you hold a reference to it.
+
+```csharp
+// On your own component, when tearing down
+_soundService.StopAll();          // public, safe
+_soundService.Dispose();          // unbinds DI
+```
+
+`StopAll()` also does not free memory permanently - it stops the sounds, and
+`SimplePool.Clear()` is what destroys the pooled GameObjects. Both are
+reversible: stopped emitters return to the pool for reuse.
 
 ### Issue 5: Fading Not Working
 
@@ -601,11 +669,23 @@ public void SafeFadeOut(uint handler, float duration)
     var emitter = GetEmitter(handler);
     if (emitter != null)
     {
-        DOTween.Kill(emitter.Source); // Kill existing tweens
-        emitter.FadeOut(duration);
+        DOTween.Kill(emitter.Source);      // kill conflicting tweens
+        // Two arguments on purpose - see the overload note below
+        emitter.FadeOut(duration, 0f);
     }
 }
 ```
+
+**`AudioEmitter` has two `FadeOut` overloads, and the short one bites:**
+
+| Call                       | Binds to                | Meaning                        |
+| -------------------------- | ----------------------- | ------------------------------ |
+| `FadeOut(duration, delay)` | two-argument overload   | fade for `duration`, after `delay` |
+| `FadeOut(delay = 0f)`      | one-argument overload   | wait `delay`, then use the event's fade duration |
+
+`emitter.FadeOut(duration)` binds to the **delay** overload, so it waits and
+then fades with the default duration. `SoundService.FadeOut` used to have this
+exact bug; always pass both arguments when you mean the duration.
 
 ---
 
@@ -732,20 +812,35 @@ void ExplodeAndDestroy()
 
 ```csharp
 public class AudioPoolMonitor : BehaviourBase
+// Monitor pool usage.
+// GetEmitters(eventKey) filters emitters by their event key, so an empty
+// string matches NOTHING and always reports 0. There is no "all emitters"
+// overload - track the handlers you started instead.
+public class AudioMonitor : BehaviourBase
 {
     [Inject] private SoundService _soundService;
+    private readonly List<uint> _tracked = new();
+
+    public uint Play(string eventKey)
+    {
+        var handler = _soundService.Play(eventKey, transform);
+        if (handler != 0) _tracked.Add(handler);
+        return handler;
+    }
 
     private void Update()
     {
-        // Monitor pool usage
-        if (Time.frameCount % 300 == 0)
-        {
-            int activeCount = _soundService.GetEmitters("").Count();
-            Debug.Log($"Active audio emitters: {activeCount}");
-        }
+        if (Time.frameCount % 300 != 0) return;
+
+        int stillPlaying = _tracked.Count(h => _soundService.IsPlaying(h));
+        Debug.Log($"Tracked sounds still playing: {stillPlaying}");
+        _tracked.RemoveAll(h => !_soundService.IsPlaying(h));
     }
 }
 ```
+
+A handler of `0` means the event key was not found - check for it before
+adding to the list.
 
 ### 6. Dynamic Audio Parameters
 
@@ -802,44 +897,70 @@ public static void ValidateAudioCollection(AudioEventsCollection collection)
 
 ### 8. Volume Control by Category
 
-It is more advisable to control group volume via the Mixer Group, but code-based approach will do too
+First, why the obvious code does not work: `GetEmitters(eventKey)` filters by
+an **exact** key match and there is no "give me every emitter" overload, so
+`GetEmitters("")` always yields an empty sequence. A loop over it can never do
+anything, no matter how the condition inside is written.
+
+Writing `emitter.Source.volume` directly is also a poor fit - it overwrites the
+volume already stored in the `AudioEvent`, and you need to know every key.
+
+**Recommended: an AudioMixerGroup per category.** Note that the Sample project
+ships **without** an `.mixer` asset, so you create one yourself:
+
+1. Create an AudioMixer asset, add a group per category (Music, SFX, UI).
+2. Expose a Volume parameter on each group.
+3. Assign the group to each event's **`output`** field (`AudioEvent.output` is
+   an `AudioMixerGroup`, and `AudioEmitter` applies it to the source when the
+   sound starts).
 
 ```csharp
+using UnityEngine.Audio;
+
 public class AudioSettings : BehaviourBase
 {
+    [SerializeField] private AudioMixer _mixer;
+
+    public void SetMusicVolume(float linear01) => _mixer.SetFloat("MusicVol", LinearToDb(linear01));
+    public void SetSFXVolume(float linear01)   => _mixer.SetFloat("SfxVol", LinearToDb(linear01));
+    public void SetUIVolume(float linear01)    => _mixer.SetFloat("UiVol", LinearToDb(linear01));
+
+    private static float LinearToDb(float linear)
+        => linear <= 0.0001f ? -80f : Mathf.Log10(linear) * 20f;
+}
+```
+
+**Without a mixer**, keep your own registry of the handlers you started and act
+on those. `GetEmitters` works fine as long as you pass a real key:
+
+```csharp
+public class CategoryVolume : BehaviourBase
+{
     [Inject] private SoundService _soundService;
+    private readonly Dictionary<string, List<uint>> _byCategory = new();
 
-    public void SetMusicVolume(float volume)
+    public uint Play(string eventKey, string category)
     {
-        foreach (var emitter in _soundService.GetEmitters(""))
-        {
-            if (emitter.EventKey.StartsWith("music_"))
-            {
-                emitter.Source.volume = volume;
-            }
-        }
+        var handler = _soundService.Play(eventKey, transform);
+        if (handler == 0) return handler; // key not found
+
+        if (!_byCategory.TryGetValue(category, out var list))
+            _byCategory[category] = list = new List<uint>();
+        list.Add(handler);
+        return handler;
     }
 
-    public void SetSFXVolume(float volume)
+    public void SetCategoryVolume(string category, float volume01)
     {
-        foreach (var emitter in _soundService.GetEmitters(""))
-        {
-            if (!emitter.EventKey.StartsWith("music_") && 
-                !emitter.EventKey.StartsWith("ui_"))
-            {
-                emitter.Source.volume = volume;
-            }
-        }
-    }
+        if (!_byCategory.TryGetValue(category, out var handlers)) return;
 
-    public void SetUIVolume(float volume)
-    {
-        foreach (var emitter in _soundService.GetEmitters(""))
+        foreach (var handler in handlers)
         {
-            if (emitter.EventKey.StartsWith("ui_"))
-            {
-                emitter.Source.volume = volume;
-            }
+            var emitter = _soundService.GetEmitter(handler);
+            if (emitter == null) continue;
+
+            // AudioSource.volume is linear 0..1, so scaling it directly is fine
+            emitter.Source.volume = emitter.Source.volume * volume01;
         }
     }
 }

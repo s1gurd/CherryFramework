@@ -41,7 +41,7 @@ namespace CherryFramework.TickDispatcher
             {
                 var obj = _tickables[i];
                 
-                if (_checkActivity.ContainsKey(obj) && !_checkActivity[obj].isActiveAndEnabled)
+                if (_checkActivity.ContainsKey(obj.Obj) && !_checkActivity[obj.Obj].isActiveAndEnabled)
                     continue;
                 
                 if (emitTime < obj.LastTick + obj.TickPeriod) 
@@ -68,7 +68,7 @@ namespace CherryFramework.TickDispatcher
             {
                 var obj = _lateTickables[i];
                 
-                if (_checkActivity.ContainsKey(obj) && !_checkActivity[obj].isActiveAndEnabled)
+                if (_checkActivity.ContainsKey(obj.Obj) && !_checkActivity[obj.Obj].isActiveAndEnabled)
                     continue;
                 
                 if (emitTime < obj.LastTick + obj.TickPeriod) 
@@ -95,7 +95,7 @@ namespace CherryFramework.TickDispatcher
             {
                 var obj = _fixedTickables[i];
                 
-                if (_checkActivity.ContainsKey(obj) && !_checkActivity[obj].isActiveAndEnabled)
+                if (_checkActivity.ContainsKey(obj.Obj) && !_checkActivity[obj.Obj].isActiveAndEnabled)
                     continue;
                 
                 if (emitTime < obj.LastTick + obj.TickPeriod) 
@@ -167,18 +167,15 @@ namespace CherryFramework.TickDispatcher
         
         public void UnRegister(ITickableBase obj)
         {
-            switch (obj)
-            {
-                case ITickable t:
-                    RemoveTick(t);
-                    break;
-                case ILateTickable l:
-                    RemoveLateTick(l);
-                    break;
-                case IFixedTickable f:
-                    RemoveFixedTick(f);
-                    break;
-            }
+            // Register adds the object to every matching phase, so UnRegister has
+            // to remove it from every matching phase too. A switch would stop at
+            // the first matching case and leave the object registered elsewhere.
+            if (obj is ITickable t)
+                RemoveTick(t);
+            if (obj is ILateTickable l)
+                RemoveLateTick(l);
+            if (obj is IFixedTickable f)
+                RemoveFixedTick(f);
 
             _checkActivity.Remove(obj);
         }

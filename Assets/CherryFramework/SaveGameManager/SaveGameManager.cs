@@ -208,6 +208,9 @@ namespace CherryFramework.SaveGameManager
             }
             
             var id = _persistentComponents[component].GetObjectId();
+            if (id == null)
+                return;
+            
             var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
             var saveObject = new JObject();

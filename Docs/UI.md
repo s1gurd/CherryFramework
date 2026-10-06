@@ -105,6 +105,54 @@ The CherryFramework UI system provides a comprehensive, modular approach to buil
 | `PopulatorBase<T>`  | Dynamic list renderer with pooling                |
 | `UiAnimationBase`   | Base class for all UI animations                  |
 
+### Before You Write Any UI: Three Inspector Requirements
+
+These are not optional and none of them produce a helpful error. A
+misconfigured presenter usually looks like "nothing happens", so check them
+first.
+
+**1. `childrenContainer` must be a child of the presenter's own GameObject.**
+
+`PresenterBase.InitializePresenter()` runs from `OnEnable` and throws if the
+container sits anywhere else:
+
+```csharp
+if (childrenContainer.GetComponentInParent<PresenterBase>() != this)
+    throw new Exception($"Children container ... must be a child of this Game Object!");
+```
+
+**2. Every child presenter must be listed in `childPresenters`.**
+
+`ViewService` does not search the hierarchy - it looks the type up in that list
+only, with an exact type match:
+
+```csharp
+parentPresenter.ChildPresenters.FirstOrDefault(p => p.GetType() == type)
+```
+
+So `MySettingsPresenter : SettingsPresenter` will **not** be found when you ask
+for `SettingsPresenter`. The first entry is shown automatically when the parent
+opens.
+
+**3. `animators` must be filled for animations to do anything.**
+
+`Show()` / `Hide()` build their DOTween sequence by iterating the `animators`
+list. An empty list means an empty sequence: the view appears instantly with no
+animation. Add the built-in `UiFade` / `UiScale` / `UiSlide` / `UiActive` /
+`UiTextFade` components to the `animators` list in the Inspector.
+
+### Naming
+
+The words overlap, so fix them once:
+
+| Term              | Meaning                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| **view**          | one concrete screen (an *instance* of `PresenterBase`)          |
+| **presenter**     | the class that implements that screen                          |
+| **widget**        | a reusable element with named visual states                     |
+| **element**       | a single `WidgetElement` inside a widget — this is what animates |
+| **populator**     | the thing that renders a dynamic list                          |
+
 ---
 
 ## View Service
@@ -161,7 +209,8 @@ public ViewService(RootPresenterBase root, bool debugMessages)
 
 ```csharp
 // In installer
-var rootPresenter = FindObjectOfType<RootPresenterBase>();
+// FindObjectOfType is [Obsolete] in Unity 6 - use FindFirstObjectByType
+var rootPresenter = FindFirstObjectByType<RootPresenterBase>();
 var viewService = new ViewService(rootPresenter, debugMessages: true);
 DependencyContainer.Instance.BindAsSingleton(viewService);
 ```
@@ -219,12 +268,24 @@ _viewService.PopView<LevelPresenter>(hudPresenter, readyAccessor: levelModel.Rea
 ```
 
 ```csharp
-// Manual gating: load data asynchronously, then flip the accessor
-var ready = new Accessor<bool>(false);
-Task.Run(() => { data = LoadLevelData(); });
-// ... when the data arrives:
-ready.Send(true); // sequence resumes, view animates in
+// Manual gating: start the loading view now, then pop the real view with an
+// accessor that flips once the data has arrived.
+//
+// An Accessor<bool> cannot be created standalone - its only constructor takes
+// (DataModelBase model, string memberName). The ready flag of a model is
+// exposed as DataModelBase.ReadyAccessor, so that is what you pass:
+_levelService.LoadingView.Show();          // show your loading UI
+
+_modelService.LoadModelData(levelModel, ReadyMode.MakeReadyWhenDataFound);
+// LoadModelData sets Ready -> true once data was found, which flips
+// ReadyAccessor, which resumes the sequence passed to PopView.
+
+_viewService.PopView<LevelPresenter>(hudPresenter,
+    readyAccessor: levelModel.ReadyAccessor);
 ```
+
+So there are two things you do: flip the model's `Ready` (directly, or by
+letting `LoadModelData` do it), and hand `ReadyAccessor` to `PopView`.
 
 #### Back navigation
 
@@ -454,6 +515,7 @@ public class WidgetBase : InteractiveElementBase
     public int StatesCount => widgetStates.Count;
     public bool Playing { get; private set; }
 
+    public delegate void OnStateChangedDelegate(string newStateName);
     public event OnStateChangedDelegate OnStartStateChange;
     public event OnStateChangedDelegate OnFinishStateChange;
 
@@ -465,61 +527,69 @@ public class WidgetBase : InteractiveElementBase
 
 **Example**:
 
-```csharp
-[Serializable]
-public class ButtonState
-{
-    public Sprite backgroundSprite;
-    public Color textColor;
-    public AudioClip clickSound;
-}
+`WidgetBase` already owns the list of states - do not declare a parallel
+list of your own. Each `WidgetState` (defined in the Inspector) has a
+`stateName` and the `WidgetElement`s visible in that state, and the base class
+switches between them. To react to a change, subscribe to the events:
 
+```csharp
 public class StatefulButton : WidgetBase
 {
     [SerializeField] private Image _background;
     [SerializeField] private TMP_Text _label;
     [SerializeField] private Button _button;
 
-    [SerializeField] private List<ButtonState> _buttonStates;
+    // In the Inspector, fill WidgetBase's `widgetStates` list with entries such
+    // as { stateName = "idle",   stateElements = [idleSprite, label] }
+    //                  and          { stateName = "hover", stateElements = [hoverSprite, label] }
 
     protected override void OnEnable()
     {
         base.OnEnable();
+
         _button.onClick.AddListener(OnClick);
+        OnFinishStateChange += OnStateChanged;
+        OnStateChanged(GetStateName(CurrentState)); // apply the initial state too
     }
 
     protected override void OnDisable()
     {
-        base.OnDisable();
         _button.onClick.RemoveListener(OnClick);
+        OnFinishStateChange -= OnStateChanged;
+        base.OnDisable();
     }
 
-    public void SetState(int stateIndex)
+    // Both events pass the state's NAME, not its index
+    private void OnStateChanged(string newStateName)
     {
-        SetState(stateIndex);
-        // WidgetBase will handle the state transition
+        Debug.Log($"state -> {newStateName}");
+        ApplyLook(newStateName);
     }
 
-    protected override void OnShowComplete()
+    private void ApplyLook(string stateName)
     {
-        base.OnShowComplete();
-        ApplyCurrentState();
+        _background.sprite = stateName == "hover" ? _hoverSprite : _idleSprite;
     }
 
-    private void ApplyCurrentState()
-    {
-        var state = _buttonStates[CurrentState];
-        _background.sprite = state.backgroundSprite;
-        _label.color = state.textColor;
-    }
+    [SerializeField] private Sprite _idleSprite;
+    [SerializeField] private Sprite _hoverSprite;
 
     private void OnClick()
     {
-        var stateName = GetStateName(CurrentState);
-        Debug.Log($"Button clicked in state: {stateName}");
+        Debug.Log($"Button clicked in state: {GetStateName(CurrentState)}");
     }
 }
 ```
+
+Two mistakes this replaces:
+
+- **Do not declare `public void SetState(int ...)` that calls `SetState(...)`.**
+  `WidgetBase.SetState` is public and non-virtual, so your method would call
+  itself - infinite recursion. Use the inherited one, or call
+  `SetState("hover")` by name.
+- **Do not index your own state list with `CurrentState`.** `CurrentState` is
+  an index into the base class's `widgetStates`, so a parallel list of your
+  own will be out of sync with it.
 
 ### WidgetState
 
@@ -756,10 +826,16 @@ public abstract class UiAnimationBase : MonoBehaviour
     protected Sequence MainSequence;
 
     public void Initialize();
+    protected abstract void OnInitialize();   // your subclass MUST implement this
     public abstract Sequence Show(float delay = 0f);
     public abstract Sequence Hide(float delay = 0f);
 }
 ```
+
+`OnInitialize()` is where an animator captures what it needs (the target
+`RectTransform`, the `CanvasGroup`, the text component). Forgetting to
+override it is a compile error - declaring your own animator without it will
+not build.
 
 ### UiAnimationSettings
 
@@ -794,7 +870,7 @@ public class UiAnimationSettings
 #### UiFade
 
 ```csharp
-[RequireComponent(typeof(CanvasGroup))]
+[RequireComponent(typeof(CanvasGroup), typeof(RectTransform))]
 public class UiFade : UiAnimationBase
 {
     // Fades the CanvasGroup alpha
@@ -833,7 +909,7 @@ public class UiSlide : UiAnimationBase
 #### UiTextFade
 
 ```csharp
-[RequireComponent(typeof(TMP_Text))]
+[RequireComponent(typeof(RectTransform), typeof(TMP_Text))]
 public class UiTextFade : UiAnimationBase
 {
     // Fades TMP_Text alpha
@@ -939,17 +1015,28 @@ public Sequence ShowAll()
     return seq;
 }
 
-// BAD - Simultaneous animations for many elements
+// BAD - starting every tween at the same moment for many elements
 public Sequence ShowAllSequential()
 {
     var seq = DOTween.Sequence();
     foreach (var element in _elements)
     {
-        seq.Insert(0f, element.Show()); // Plays one after another - slow!
+        // Insert(0f, ...) puts EVERY tween at position 0, so they all start
+        // together - that is simultaneous, not sequential. Use Append to queue
+        // them one after another.
+        seq.Append(element.Show());
     }
     return seq;
 }
 ```
+
+DOTween reference:
+
+| Call             | Effect                                            |
+| ---------------- | ------------------------------------------------- |
+| `seq.Append(t)`  | starts **after** everything already in the sequence |
+| `seq.Join(t)`    | starts at the **current** position, in parallel     |
+| `seq.Insert(0f, t)` | always starts at time 0 - all of them together   |
 
 ### 4. Widget State Complexity
 
@@ -979,7 +1066,9 @@ public class ComplexWidget : WidgetBase
 
 ```csharp
 // SOLUTION 1: Ensure presenter is registered
-public class MyInstaller : InstallerBehaviourBase{
+[DefaultExecutionOrder(-10000)]
+public class MyInstaller : InstallerBehaviourBase
+{
     [SerializeField] private RootPresenterBase _root;
 
     protected override void Install()
@@ -992,48 +1081,62 @@ public class MyInstaller : InstallerBehaviourBase{
 // SOLUTION 2: Check if view exists in container
 public bool CanShowPresenter<T>() where T : PresenterBase
 {
-    var root = FindObjectOfType<RootPresenter>();
-    return root.ChildPresenters.Any(p => p is T);
+    // RootPresenter is the abstract base; the concrete component is RootPresenterBase.
+    // FindObjectOfType is [Obsolete] in Unity 6 - use FindFirstObjectByType.
+    var root = FindFirstObjectByType<RootPresenterBase>();
+    return root != null && root.ChildPresenters.Any(p => p is T);
 }
 
 ```
 
 ### Issue 2: Modal Blocks Navigation
 
-**Symptoms**: `Back()` doesn't work, can't navigate past certain screens
+**Symptoms**: `Back()` does nothing and you cannot navigate past a screen
 
-**Solution**:
+**This is not a bug** - it is the point of a modal view. `ViewService.Back()`
+checks the top of the navigation history and refuses to pop while that view is
+modal:
 
 ```csharp
-public class ModalPresenter : PresenterBase
-{
-    [SerializeField] private bool _isModal = true;
+// inside ViewService.Back()
+if (_history.TryPeek(out var current) &&
+    (current.Last() is IModal || current.Last().Modal))
+    return DOTween.Sequence();   // blocked, nothing happens
+```
 
+A view counts as modal when it implements the `IModal` marker interface **or**
+when its `PresenterBase.Modal` property returns `true`.
+
+The fix is on your side: give the modal screen its own way out.
+
+```csharp
+public class PausePresenter : PresenterBase
+{
+    [SerializeField] private GameObject _pauseMenu;
+
+    private bool _isModal = true;
     public override bool Modal => _isModal;
 
-    private void Update()
+    public void Open()  => ViewService.PopView(this);
+    public void Close()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            // Handle modal-specific back behavior
-            ViewService.Back();
-        }
+        _isModal = false;   // must happen BEFORE Back(), see above
+        ViewService.Back();
     }
 }
-
-// ViewService automatically blocks navigation while the top view is modal:
-if (_history.TryPeek(out var current))
-{
-    if (current.Last() is IModal || current.Last().Modal)
-    {
-        newView = null;
-        return DOTween.Sequence(); // navigation blocked
-    }
-}
-
-// A view counts as modal when it implements the IModal marker interface
-// or when its PresenterBase.Modal property returns true.
 ```
+
+Do not try to close it from inside `Back()` or from an `OnEscape` handler that
+calls `Back()` while the flag is still `true` - that is exactly the deadlock.
+
+Two related notes:
+
+- If you implemented `IModal` on the presenter, unsetting the `Modal` property
+  will **not** help: the `is IModal` half of the check still matches. Keep the
+  marker off the class and control everything through the property.
+- `Input.GetKeyDown` in this project will not compile-and-run as expected: the
+  Sample uses the **new Input System** (`InputSystem_Actions`), so read keys
+  through an `InputAction` or a generated wrapper rather than the legacy API.
 
 ---
 
@@ -1043,7 +1146,7 @@ if (_history.TryPeek(out var current))
 
 ```csharp
 // GOOD - Clear hierarchy
-// RootPresenter
+// RootPresenterBase (the root component)
 // ├── MainMenuPresenter
 // │   └── SettingsPresenter (child of MainMenu)
 // ├── GameplayPresenter
@@ -1098,17 +1201,25 @@ public class PlayerHUD : PresenterBase
 ### 3. Use Populators for Dynamic Lists
 
 ```csharp
+// PopulatorBase is abstract and its constructor is protected, so you cannot
+// "new" it directly - derive a concrete populator first.
+public class ShopPopulator : PopulatorBase<ShopItem>
+{
+    public ShopPopulator(PopulatorElementBase<ShopItem> elementSample, Transform root)
+        : base(elementSample, root) { }
+}
+
 public class ShopUI : PresenterBase
 {
     [SerializeField] private ShopItemElement _itemPrefab;
     [SerializeField] private Transform _itemContainer;
 
-    private PopulatorBase<ShopItem> _populator;
+    private ShopPopulator _populator;
 
     protected override void OnPresenterInitialized()
     {
         base.OnPresenterInitialized();
-        _populator = new PopulatorBase<ShopItem>(_itemPrefab, _itemContainer);
+        _populator = new ShopPopulator(_itemPrefab, _itemContainer);
     }
 
     public void ShowItems(List<ShopItem> items)
@@ -1148,10 +1259,19 @@ public class OnboardingFlow : PresenterBase
 ### 5. Handle Modal Views Properly
 
 ```csharp
-public class ConfirmationDialog : PresenterBase, IModal
+// Do NOT implement IModal here. The ViewService check is
+//   top is IModal  ||  top.Modal
+// and IModal is a marker - once you implement it the view is modal forever,
+// so Back() would refuse to close your own dialog.
+//
+// Override PresenterBase.Modal instead, so the flag is mutable.
+public class ConfirmationDialog : PresenterBase
 {
     [SerializeField] private Button _confirmButton;
     [SerializeField] private Button _cancelButton;
+
+    private bool _isModal = true;
+    public override bool Modal => _isModal;
 
     private System.Action _onConfirm;
     private System.Action _onCancel;
@@ -1160,24 +1280,31 @@ public class ConfirmationDialog : PresenterBase, IModal
     {
         _onConfirm = onConfirm;
         _onCancel = onCancel;
+        _isModal = true;
 
         // Set message text
         ViewService.PopView(this);
     }
 
-    public void OnConfirm()
-    {
-        _onConfirm?.Invoke();
-        ViewService.Back();
-    }
+    public void OnConfirm() => Close(_onConfirm);
+    public void OnCancel() => Close(_onCancel);
 
-    public void OnCancel()
+    private void Close(System.Action action)
     {
-        _onCancel?.Invoke();
+        action?.Invoke();
+
+        // Back() returns early while the top view is modal, so drop the flag
+        // BEFORE popping - otherwise the dialog gets stuck on screen.
+        _isModal = false;
         ViewService.Back();
     }
 }
 ```
+
+If a modal screen has to close more than just itself, `HideAndReset()` hides
+the current view **and clears the whole navigation history**, leaving
+`IsLastView` true again - use it for "return to the start", not for closing a
+dialog.
 
 ### 6. Use ViewService Events for Global UI Logic
 
@@ -1244,8 +1371,10 @@ public static class ViewDebugger
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("--- View Hierarchy ---");
 
-        var root = DependencyContainer.Instance.GetInstance<RootPresenterBase>();
-        LogPresenter(sb, root, 0);
+        // GetInstance<T>() is internal - it is not callable from your assembly.
+        // Either pass the root in, or keep a reference of your own:
+        //   public static void Init(RootPresenterBase root) => _root = root;
+        LogPresenter(sb, _root, 0);
 
         Debug.Log(sb.ToString());
     }
@@ -1342,6 +1471,8 @@ public class GameplayPresenter : PresenterBase
         childPresenters.Add(_pauseMenu);
     }
 
+    // Note: this project uses the new Input System - use an InputAction or a
+    // generated wrapper instead of the legacy Input.GetKeyDown.
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -1361,7 +1492,10 @@ public class GameplayPresenter : PresenterBase
         }
         else
         {
-            ViewService.Back();
+            // Do NOT call ViewService.Back() here. PauseMenuPresenter is modal,
+            // so Back() refuses to pop it and the menu stays stuck on screen -
+            // let the presenter close itself (see PausePresenter.Close above).
+            _pauseMenu.Close();
             Time.timeScale = 1f;
         }
     }
@@ -1401,17 +1535,19 @@ public class HealthBarWidget : WidgetBase
     }
 }
 
-// 3. Populator for inventory
+// 3. Populator for inventory.
+// Reuse the InventoryPopulator derived in the PopulatorBase section above -
+// PopulatorBase itself is abstract and cannot be instantiated.
 public class InventoryPresenter : PresenterBase
 {
     [SerializeField] private InventoryItemElement _itemPrefab;
     [SerializeField] private Transform _contentRoot;
 
-    private PopulatorBase<ItemData> _populator;
+    private InventoryPopulator _populator;
 
     protected override void OnPresenterInitialized()
     {
-        _populator = new PopulatorBase<ItemData>(_itemPrefab, _contentRoot);
+        _populator = new InventoryPopulator(_itemPrefab, _contentRoot);
     }
 
     public void ShowInventory(List<ItemData> items)

@@ -256,13 +256,14 @@ These presenters are loaded as prefabs and instantiated when needed.
 
 ## Scene Statistics
 
+Counted from `dinoscene.unity` itself (20 `GameObject` blocks, 36
+`MonoBehaviour` blocks).
+
 | Category                | Count                       |
 | ----------------------- | --------------------------- |
-| Total GameObjects       | ~30                         |
-| Scripts (Framework)     | 15+                         |
-| Scripts (Game-specific) | 12                          |
-| UI Elements             | 10                          |
-| PersistentObjects       | 3 (Player, Spawner, Ground) |
+| GameObjects             | 20                          |
+| MonoBehaviour components| 36                          |
+| PersistentObjects       | 2 (Player, Spawner)         |
 
 ---
 
@@ -294,11 +295,23 @@ Canvas (Root UI)
 
 ### 4. **Save System Integration**
 
-Three objects have `PersistentObject` components:
+Exactly **two** objects carry a `PersistentObject` component (verified by
+counting the script reference in the scene file):
 
-- **Player** (GUID: `7abb6373-7d8c-43dc-9c12-6c6114f78bba`) - Saves jump state
-- **Spawner** (GUID: `58f6ad04-11e7-41f9-86cf-a87ef00b0a3b`) - Tracks spawned obstacles
-- **Ground** (no GUID shown) - Saves position (though not critical)
+- **Player** — guid `7abb6373-7d8c-43dc-9c12-6c6114f78bba`,
+  `saveTransform: 1` (its position is restored, so a quit mid-run resumes
+  where you were)
+- **Spawner** — guid `58f6ad04-11e7-41f9-86cf-a87ef00b0a3b`,
+  `saveTransform: 0` (only its own state is saved, not its position)
+
+`Ground` has **no** `PersistentObject`. It tracks distance and time through the
+`GameStateData` data model instead, which is handled by `ModelService` rather
+than by `SaveGameManager`.
+
+Both objects are non-spawnable (`spawnableObject: 0`), so their ids are
+`SceneId:{buildIndex}.{guid}`. That is why `dinoscene.unity` must stay in Build
+Settings: remove it and the scene's `buildIndex` becomes `-1`, changing every
+key this scene has ever written.
 
 ### 5. **Animation Showcase**
 
@@ -341,6 +354,6 @@ To recreate or modify this scene:
 
 4. **EventSystem** with InputSystemUIInputModule
 
-5. **Build Settings** must include this scene for GUID generation on PersistentObjects
+5. **Build Settings** must include this scene - the `PersistentObject` ids are `SceneId:{buildIndex}.{guid}`, so without it every key this scene has saved becomes unreachable.
 
 The scene demonstrates a complete, functional game that showcases all major CherryFramework features in an integrated, playable experience.

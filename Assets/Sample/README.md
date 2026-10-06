@@ -14,38 +14,67 @@ This sample project demonstrates the practical implementation of the CherryFrame
 
 ## Project Structure
 
+Verified against the files on disk. The generated models are **not** inside
+`Sample` - they go to `Assets/Scripts/GeneratedDataModels/`.
+
 ```
 Assets/
-└── Sample/
-    ├── Scenes/
-    │   └── dinoscene.unity              # Main game scene
-    ├── Scripts/
-    │   ├── GameInstaller.cs              # DI container configuration
-    │   ├── GameManager.cs                 # Core game logic
-    │   ├── Player.cs                       # Player controller
-    │   ├── Ground.cs                        # Scrolling ground
-    │   ├── Obstacle.cs                      # Base obstacle class
-    │   ├── RocketPowerUp.cs                  # Power-up implementation
-    │   ├── Spawner.cs                         # Object spawning system
-    │   ├── AnimatedSprite.cs                   # Sprite animation
-    │   └── UI/
-    │       ├── GamePaused.cs                     # Pause menu
-    │       ├── PlayerDead.cs                      # Death screen
-    │       ├── PlayerStats.cs                      # Statistics display
-    │       ├── GameStatsHUD.cs                      # In-game HUD
-    │       ├── HUDControl.cs                          # HUD state management
-    │       ├── PowerUpNotification.cs                   # Power-up UI
-    │       └── SpeedUpNotification.cs                     # Speed increase UI
-    ├── Settings/
-    │   ├── GameSettings.asset                # Game configuration
-    │   ├── InputSystem_Actions.inputactions   # Input bindings
-    │   └── EventKeys.cs                        # Event/status constants
-    └── DataModels/
-        ├── Templates/
-        │   ├── GameStateData.cs                 # Game state template
-        │   └── GameStatistics.cs                  # Statistics template
-        └── (Generated)                          # Generated model classes
+├── Sample/
+│   ├── Scenes/
+│   │   └── dinoscene.unity            # Main game scene (the only scene in Build Settings)
+│   ├── Scripts/
+│   │   ├── GameInstaller.cs            # DI container configuration
+│   │   ├── GameManager.cs              # Core game logic
+│   │   ├── Player.cs                   # Player controller
+│   │   ├── Ground.cs                   # Scrolling ground
+│   │   ├── Obstacle.cs                 # Base obstacle class
+│   │   ├── RocketPowerUp.cs            # Power-up implementation
+│   │   ├── Spawner.cs                  # Object spawning system
+│   │   ├── AnimatedSprite.cs           # Sprite animation
+│   │   ├── Settings/
+│   │   │   ├── EventKeys.cs            # Event/status key constants
+│   │   │   ├── GameSettings.cs         # ScriptableObject for game config
+│   │   │   └── InputSystem_Actions.cs  # Generated Input System wrapper
+│   │   ├── DataModels.Templates/       # Namespace must end with DataModels.Templates
+│   │   │   ├── GameStateData.cs
+│   │   │   └── GameStatistics.cs
+│   │   └── UI/
+│   │       ├── GamePaused.cs           # Pause menu
+│   │       ├── PlayerDead.cs           # Death screen
+│   │       ├── PlayerStats.cs          # Statistics display
+│   │       ├── GameStatsHUD.cs         # In-game HUD
+│   │       ├── HUDControl.cs           # HUD state management
+│   │       ├── PowerUpNotification.cs  # Power-up UI
+│   │       └── SpeedUpNotification.cs  # Speed increase UI
+│   └── Settings/
+│       ├── DinoGameSettings.asset          # Game configuration (GameSettings.cs)
+│       ├── AudioSettings.asset             # GlobalAudioSettings
+│       ├── AudioEventsCollection.asset     # Sound event keys
+│       ├── InputSystem.inputsettings.asset # Input System project settings
+│       └── InputSystem_Actions.inputactions
+└── Scripts/
+    └── GeneratedDataModels/           # GENERATED - do not edit
+        ├── GameStateDataModel.Generated.cs
+        ├── GameStatisticsModel.Generated.cs
+        └── ExampleDataModel.Generated.cs
 ```
+
+### Regenerating the models
+
+The `*.DataModels.Templates` classes are **sources only**. The generated
+`*Model` classes live outside `Sample` entirely - see
+`Assets/Scripts/GeneratedDataModels/` in the tree above. To rebuild them after
+editing a template:
+
+1. Edit the template (for example `Scripts/DataModels.Templates/GameStateData.cs`).
+   Its **namespace must end with `DataModels.Templates`**.
+2. Run the menu item **`Tools → UnityCodeGen → Generate`**.
+3. The whole `Assets/Scripts/GeneratedDataModels/` folder is deleted and
+   regenerated.
+
+The model name is derived as `<template name with "Template" removed> + "Model"`,
+so `GameStateData` becomes `GameStateDataModel` and `EnemyStatsTemplate`
+becomes `EnemyStatsModel`.
 
 ---
 
@@ -56,6 +85,19 @@ Assets/
 The `GameInstaller` configures all services and dependencies at startup:
 
 ```csharp
+using CherryFramework.DataModels;
+using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.DependencyManager;
+using CherryFramework.SaveGameManager;
+using CherryFramework.SoundService;
+using CherryFramework.StateService;
+using CherryFramework.TickDispatcher;
+using CherryFramework.UI.Views;
+using CherryFramework.Utils.PlayerPrefsWrapper;
+using Sample.Scripts.Settings;
+using UnityEngine;
+
+// [DefaultExecutionOrder] is not inherited, so the installer declares it itself
 [DefaultExecutionOrder(-10000)]
 public class GameInstaller : InstallerBehaviourBase
 {
@@ -66,13 +108,22 @@ public class GameInstaller : InstallerBehaviourBase
 
     protected override void Install()
     {
+        // ONE shared IPlayerPrefs instance for both save systems. Creating two
+        // separate PlayerPrefsData objects would leave SaveGameManager and
+        // ModelService writing to different stores, so data saved by one would
+        // be invisible to the other.
+        var playerPrefs = new PlayerPrefsData();
+
         // Core services
         BindAsSingleton<Ticker>();
-        BindAsSingleton(new StateService(false));
-        BindAsSingleton(new SaveGameManager(new PlayerPrefsData(), false));
-        BindAsSingleton(new ModelService(new PlayerPrefsBridge<PlayerPrefsData>(), false));
+        // debugMessages: true prints every emitted event, status change and
+        // subscription run. Noisy, but it is the fastest way to see the
+        // event/status system working.
+        BindAsSingleton(new StateService(true));
+        BindAsSingleton(new SaveGameManager(playerPrefs, true));
+        BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), true));
         BindAsSingleton(new SoundService(globalAudioSettings, audioEvents));
-        BindAsSingleton(new ViewService(uiRoot, false));
+        BindAsSingleton(new ViewService(uiRoot, true));
 
         // Game-specific dependencies
         BindAsSingleton(new InputSystem_Actions());
@@ -82,6 +133,90 @@ public class GameInstaller : InstallerBehaviourBase
     }
 }
 ```
+
+### Reading the Console
+
+`SaveGameManager`, `ModelService` and `ViewService` are all constructed with
+`debugMessages: true`, so pressing Play immediately shows what the framework is
+doing. Real output from this scene:
+
+```
+[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-GeneratedDataModels.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
+[Save Game Manager] Loaded component Sample.Player with key SceneId:0.7abb6373-7d8c-43dc-9c12-6c6114f78bba-Sample.Player found data: {"_direction":{}, "_jumpState":0}
+[Save Game Manager] Loaded component Sample.Spawner with key SceneId:0.58f6ad04-11e7-41f9-86cf-a87ef00b0a3b-Sample.Spawner found data: {"_spawnedObjects":[0,0,4,5]}
+[State Service] Set status "GameRunning" at time 5,713958
+[State Service] Invoked 4 events at time 5,713958
+[View Service] History push:
+#PlayerDead(Clone)/
+```
+
+`Time.time` prints with the machine's locale, hence the comma.
+
+On the way out (stopping the editor) you see the other half of the cycle. Every
+key is deleted and then immediately written back:
+
+```
+[Save Game Manager] Deleted data for component Sample.Player with key SceneId:0.7abb6373-...
+[Save Game Manager] Deleted data for component ... with key Obstacle:0-...
+[Model Service - PlayerPrefs] Removed model GeneratedDataModels.GameStateDataModel from Player Prefs...
+
+[Save Game Manager] Saved key SceneId:0.7abb6373-...-Sample.Player with {"_direction":{},"_jumpState":0}
+[Save Game Manager] Saved key SceneId:0.58f6ad04-...-Sample.Spawner with {"_spawnedObjects":[0,6,4,1]}
+[Save Game Manager] Saved key Obstacle:0-... with {"_position":{"x":-5.581851,...},"_rotation":...,"_scale":...}
+[Save Game Manager] Saved key Obstacle:1-... with {"_position":{"x":-0.74753,...},...}
+[Save Game Manager] Saved key Obstacle:2-... with {"_position":{"x":3.33741283,...},...}
+[Save Game Manager] Saved key Obstacle:3-... with {"_position":{"x":7.39093876,...},...}
+[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStateDataModel with content: {"GameSpeed":3.0,...,"DistanceTraveled":18,"RunTime":6}
+[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStatisticsModel with content: {"GameRunning":false,...,"MaxDistance":18,"TotalDistance":70,"TriesNum":6}
+```
+
+Press Play again and those same numbers come back in the `Loaded key ...` lines.
+`TriesNum` went from 5 to 6 in the meantime - that increment across runs is the
+save system visibly working.
+
+### How to read a key
+
+Every line is `[Service] action with key <key>` followed by the JSON behind it.
+The key tells you which system owns the data:
+
+| Key shape | Owner | Meaning |
+| --------- | ----- | ------- |
+| `SINGLETON-GeneratedDataModels.XxxModel` | `ModelService` | a data model, stored as one JSON blob |
+| `SceneId:{buildIndex}.{guid}-{Type}` | `SaveGameManager` | a scene object; `0` is this scene's build index |
+| `{customId}:{suffix}-{Type}` | `SaveGameManager` | a **spawned** object; `Obstacle:0` is the first one |
+
+The suffix matters: without it, every copy of the same spawned prefab would
+fight over one key. `Spawner` restores the same list of obstacle indices it
+spawned last time, which is why `"_spawnedObjects":[0,0,4,5]` comes back.
+
+A missing key produces `NOT FOUND model by key: ... in PlayerPrefs`, which is
+the normal first-run message rather than an error.
+
+### What survives a restart here
+
+Verified by stopping and replaying the scene:
+
+- **Scene objects.** `Player` returns to its saved position
+  (`SceneId:0.7abb6373-...-Sample.Player`).
+- **Spawned obstacles.** `Obstacle:0` .. `Obstacle:3` each store `_position`,
+  `_rotation` and `_scale`, and every cactus and bird reappears at exactly the
+  coordinate it was left at. `Spawner` also restores its
+  `"_spawnedObjects":[0,6,4,1]` index list, so it knows which ones to respawn.
+- **Data models.** `GameStatistics` accumulates *across* runs (`Tries`,
+  `TotalDistance`, `TotalRunTime`, `MaxDistance` are never reset), while
+  `GameState` (`DistanceTraveled`, `RunTime`, `GameSpeed`) is rewritten each run.
+
+The order on quit is what makes this work: `ClearData()` deletes every
+component key, then `SaveAllData()` immediately writes them all back - which is
+why the log shows `Deleted data ...` and `Saved key ...` for the same keys in
+sequence. See `Assets/Sample/Scripts/GameManager.cs:161`.
+
+A key that was never written shows up as `NOT FOUND model by key: ...` or
+`Not found data for component ...`; that is normal, not an error.
+
+One thing worth knowing: Newtonsoft serialises Unity's `Vector3` in full,
+including its derived `normalized` / `magnitude` / `sqrMagnitude` members, so
+transforms occupy noticeably more space than you would expect.
 
 ### 2. Data Models
 

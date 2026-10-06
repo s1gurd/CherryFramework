@@ -25,7 +25,7 @@ The CherryFramework `SimplePool<T>` provides a lightweight, type-safe object poo
 | `Instantiate()` and `Destroy()` called constantly      | Objects reused from pool |
 | Frequent garbage collection                            | Minimal GC overhead      |
 | Performance spikes during instantiation and GC cleanup | Consistent performance   |
-| No object limit                                        | Controlled pool size     |
+| No object limit                                        | Pool grows on demand (no built-in limit) |
 
 ---
 
@@ -64,11 +64,32 @@ The CherryFramework `SimplePool<T>` provides a lightweight, type-safe object poo
 
 ### How It Works
 
-1. **First Request**: Pool empty → new object instantiated
-2. **Subsequent Requests**: Inactive object reactivated and returned
-3. **Object Return**: Object deactivated → automatically available for reuse
-4. **Per-Sample Pools**: Each prefab gets its own pool
-5. **Null Cleanup**: Destroyed objects removed on next access
+1. **First Request**: pool has no entry for this sample -> a new object is
+   instantiated from it (and it comes back **active**, because
+   `Object.Instantiate` keeps the prefab's state)
+2. **Subsequent Requests**: the first **inactive** instance is returned
+   **as-is**. `Get` never calls `SetActive(true)` — activating the object is
+   your job. See [Activation](#activating-objects-after-get).
+3. **Object Return**: there is no `Release()`. The pool considers an object
+   free the moment you call `gameObject.SetActive(false)` on it.
+4. **Per-Sample Pools**: one pool per **component reference**. The same prefab
+   passed as two different references produces two separate pools.
+5. **Null Cleanup**: destroyed objects are pruned from the list only on the
+   next `Get()` call. `ActiveObjects()` and `Clear()` merely skip them.
+
+#### Activating objects after Get
+
+Because `Get` returns inactive objects untouched, forgetting to activate is
+the single most common way to get "the pool returned something but nothing
+happened":
+
+```csharp
+var bullet = bulletPool.Get(bulletPrefab, firePoint.position, firePoint.rotation);
+bullet.gameObject.SetActive(true); // required - Get does not do this
+```
+
+The framework follows the same rule internally: `AudioEmitter` activates
+itself when it starts playing (see `Assets/CherryFramework/SoundService/AudioEmitter.cs`).
 
 ### Key Components
 
@@ -407,40 +428,48 @@ private void OnLevelWasLoaded()
 
 ### Pool Size Limits
 
+`SimplePool<T>` has **no built-in limit** — it grows until you call `Clear()`.
+If you need a cap (for example, a hard limit on simultaneous bullets), you
+have to enforce it yourself. Count the *active* objects and recycle the oldest
+one instead of creating another:
+
 ```csharp
-public class LimitedPool<T> : SimplePool<T> where T : Component
+using CherryFramework.SimplePool;
+using UnityEngine;
+
+// Composition, not inheritance: SimplePool keeps its internal list private,
+// and its Get methods are not virtual, so neither can be reached from a
+// derived class.
+public class LimitedPool<T> where T : Component
 {
-    private int _maxSize;
-    private int _totalCreated;
+    private readonly SimplePool<T> _pool = new();
+    private readonly int _maxSize;
 
-    public LimitedPool(int maxSize)
-    {
-        _maxSize = maxSize;
-    }
+    public LimitedPool(int maxSize) => _maxSize = maxSize;
 
-    public new T Get(T sample, Vector3 position, Quaternion rotation, Transform parent = null)
+    public T Get(T sample, Vector3 position, Quaternion rotation, Transform parent = null)
     {
-        if (_totalCreated >= _maxSize)
+        var active = _pool.ActiveObjects(sample);
+        if (active.Count >= _maxSize)
         {
-            // Reuse oldest active object
-            var active = ActiveObjects(sample);
-            if (active.Count > 0)
-            {
-                active[0].gameObject.SetActive(false);
-            }
+            // Recycle the oldest active object - this is what returns it to
+            // the pool, because there is no Release()
+            active[0].gameObject.SetActive(false);
         }
 
-        var obj = base.Get(sample, position, rotation, parent);
-
-        if (!_pool.ContainsKey(sample) || !_pool[sample].Contains(obj))
-        {
-            _totalCreated++;
-        }
-
+        var obj = _pool.Get(sample, position, rotation, parent);
+        obj.gameObject.SetActive(true); // Get does not activate for you
         return obj;
     }
+
+    public List<T> ActiveObjects(T sample) => _pool.ActiveObjects(sample);
+
+    public void Clear() => _pool.Clear();
 }
 ```
+
+Note that this caps **simultaneously active** objects, not the total number
+of instances ever created. To bound memory as well, call `Clear()` yourself.
 
 ---
 
@@ -514,15 +543,21 @@ var bullet = _pool.Get(Instantiate(_prefab)); // Different reference!
 **Solution**: Implement size monitoring and limits
 
 ```csharp
-public class MonitoredPool<T> : SimplePool<T> where T : Component
+// Composition again: SimplePool's internal list is private, so a derived
+// class cannot measure the total instance count - and its Get methods are
+// not virtual, so 'new Get' would not intercept calls made through a
+// SimplePool<T> reference anyway.
+public class MonitoredPool<T> where T : Component
 {
+    private readonly SimplePool<T> _pool = new();
+
     public int PeakActive { get; private set; }
 
-    public new T Get(T sample, Vector3 position, Quaternion rotation, Transform parent = null)
+    public T Get(T sample, Vector3 position, Quaternion rotation, Transform parent = null)
     {
-        var obj = base.Get(sample, position, rotation, parent);
+        var obj = _pool.Get(sample, position, rotation, parent);
 
-        int active = ActiveObjects(sample).Count;
+        int active = _pool.ActiveObjects(sample).Count;
         PeakActive = Mathf.Max(PeakActive, active);
 
         return obj;
@@ -530,10 +565,11 @@ public class MonitoredPool<T> : SimplePool<T> where T : Component
 
     public void LogStats(T sample)
     {
-        int active = ActiveObjects(sample).Count;
-        int total = _pool.ContainsKey(sample) ? _pool[sample].Count : 0;
+        int active = _pool.ActiveObjects(sample).Count;
 
-        Debug.Log($"Pool stats - Active: {active}, Total: {total}, Peak: {PeakActive}");
+        // The framework does not expose the total instance count, only the
+        // active ones - track the total yourself if you need it.
+        Debug.Log($"Pool stats - Active: {active}, Peak: {PeakActive}");
     }
 }
 ```
@@ -759,8 +795,10 @@ public class Enemy : MonoBehaviour
         // Add score
         ScoreManager.Instance.AddScore(_scoreValue);
 
-        // Play death effect
-        FindObjectOfType<EffectManager>()?.SpawnExplosion(transform.position);
+        // Play death effect.
+        // FindObjectOfType is [Obsolete] in Unity 6 - use FindFirstObjectByType.
+        // Better still, [Inject] the manager: BehaviourBase fills it in OnEnable.
+        FindFirstObjectByType<EffectManager>()?.SpawnExplosion(transform.position);
 
         gameObject.SetActive(false); // Return to pool
     }
@@ -968,11 +1006,12 @@ public class GameEvents : MonoBehaviour
 
 | #   | Key Point                                        | Why It Matters                                                 |
 | --- | ------------------------------------------------ | -------------------------------------------------------------- |
-| 1   | **Always deactivate objects when done**          | Returns them to pool for reuse (`gameObject.SetActive(false)`) |
-| 2   | **Always reactivate objects when got from pool** | Manually handle object activity when needed                    |
-| 3   | **Reset state in OnEnable**                      | Ensures fresh state when object is reused                      |
-| 4   | **Clear pools when changing scenes**             | Prevents memory leaks                                          |
-| 8   | **Use the same sample reference**                | Different references create different pools                    |
+| 1   | **Always deactivate objects when done**          | This is the return mechanism — there is no `Release()` (`gameObject.SetActive(false)`) |
+| 2   | **Activate the object yourself after `Get`**     | `Get` never calls `SetActive(true)`; an inactive instance does nothing |
+| 3   | **Reset state in `OnEnable`**                    | Ensures fresh state when object is reused                      |
+| 4   | **Clear pools when changing scenes**             | `Clear()` destroys the pooled objects; prevents leaks          |
+| 5   | **Use the same sample reference**                | The pool key is the component reference, so a different reference creates a different pool |
+| 6   | **Check `ActiveObjects` for limits**             | The pool has no built-in cap — count active objects yourself   |
 
 ### When to Use SimplePool
 

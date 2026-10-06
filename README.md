@@ -21,13 +21,158 @@ The framework is designed to be **modular** - use what you need, ignore what you
 
 ## Where to start
 
-1. Download project and open in Unity (built in Unity 6, but any version past 2020 should be fine)
+**1. Open the project in Unity 6000.3.x** (developed and tested on
+`6000.3.25f1`). Older versions will not work: the project pins
+`com.unity.inputsystem 1.20.0` and `com.unity.ugui 2.0.0`, both of which are
+Unity 6 packages.
 
-2. Take a look at the demo project in the [Assets/Sample](Assets/Sample) folder. The game scene is located in `Assets/Sample/Scenes/dinoscene.unity`. Try to launch it several times to see how the save system is working
+**2. Run the demo.** Open `Assets/Sample/Scenes/dinoscene.unity` and press Play.
+You get an endless runner - Space to jump, the obstacle speed ramps up.
 
-3. Read the [README.md for the Sample Game](Assets/Sample/README.md)
+**3. Watch it work in the Console.** The Sample ships with debug logging turned
+on, so the very first Play already prints what the framework is doing. You
+should see lines like:
 
-4. Read the following docs (if needed)
+```
+[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-GeneratedDataModels.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
+[Save Game Manager] Loaded component Sample.Player with key SceneId:0.7abb6373-...-Sample.Player found data: {"_direction":{}, "_jumpState":0}
+[Save Game Manager] Loaded component Sample.Spawner with key SceneId:0.58f6ad04-...-Sample.Spawner found data: {"_spawnedObjects":[0,0,4,5]}
+[State Service] Set status "GameRunning" at time 5,713958
+[State Service] Invoked 4 events at time 5,713958
+[View Service] History push:
+#PlayerDead(Clone)/
+```
+
+And when you stop the editor, the other half of the cycle:
+
+```
+[Save Game Manager] Deleted data for component Sample.Player with key SceneId:0.7abb6373-...
+[Save Game Manager] Deleted data for component ... with key Obstacle:0-...
+[Save Game Manager] Saved key SceneId:0.7abb6373-...-Sample.Player with {"_direction":{},"_jumpState":0}
+[Save Game Manager] Saved key SceneId:0.58f6ad04-...-Sample.Spawner with {"_spawnedObjects":[0,6,4,1]}
+[Save Game Manager] Saved key Obstacle:0-... with {"_position":{"x":-5.581851,...},"_rotation":...,"_scale":...}
+[Save Game Manager] Saved key Obstacle:1-... with {"_position":{"x":-0.74753,...},...}
+[Save Game Manager] Saved key Obstacle:2-... with {"_position":{"x":3.33741283,...},...}
+[Save Game Manager] Saved key Obstacle:3-... with {"_position":{"x":7.39093876,...},...}
+[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStatisticsModel with content: {..., "TriesNum":6}
+```
+
+Every key is deleted and then immediately written back - that pairing is the
+whole trick: the session is wiped so stale leftovers cannot leak, then saved
+again in the same frame.
+
+(`Time.time` is printed with the machine's locale, hence the comma.)
+
+That output is the framework in the open:
+
+- every save/load line shows the **storage key** and the raw JSON behind it;
+- `SINGLETON-...` keys belong to **data models** (`ModelService`),
+  `SceneId:0.<guid>-<type>` to **scene objects** and `Obstacle:0-...` to
+  **spawned objects** (`SaveGameManager`);
+- `Invoked 4 events at time ...` appears **only in frames where something was
+  emitted** - that is the `StateService` gate, visible in the log.
+
+**To see the save/load cycle for yourself:**
+
+1. Play for a few seconds, then **stop the editor** (not just close the scene).
+   You will see `Deleted data for component ...` for every key, immediately
+   followed by `Saved key ...` for each of them - `ClearData()` wipes the session
+   and `SaveAllData()` writes it all straight back.
+2. Press Play again and compare the `Loaded key ...` positions with the
+   `Saved key ...` ones: the Player and all four obstacles come back at exactly
+   the same coordinates, and `GameStatistics` shows a higher `TriesNum`.
+3. Press **Escape** for the pause menu, then **statistics**: `Tries` is higher,
+   `TotalDistance` is larger, and `MaxDistance` kept your best run.
+
+**What survives a restart, in this Sample:** everything. On quit
+`GameManager.OnApplicationQuit` clears the session keys and then writes them all
+back, so the next Play restores:
+
+- the **Player's** position (`SceneId:0.7abb...-Sample.Player`)
+- every **spawned obstacle** at the exact spot it was left (`Obstacle:0-3`, each
+  storing `_position`, `_rotation`, `_scale`)
+- the **Spawner's** list of live obstacle indices, so it knows what to respawn
+- the **data models** - and here `GameStatistics` accumulates *across* runs:
+  `Tries`, `TotalDistance`, `TotalRunTime` and `MaxDistance` are never reset,
+  while `GameState` (`DistanceTraveled`, `RunTime`) is rewritten each run
+
+A key that was never written shows up as `NOT FOUND model by key: ...` or
+`Not found data for component ...`; that is normal, not an error.
+
+To wipe everything, delete the PlayerPrefs entries for the app.
+
+### Turning the logging off
+
+Each service takes a `debugMessages` flag, and they are independent:
+
+| Service                    | flag                | What it prints |
+| -------------------------- | ------------------- | -------------- |
+| `ModelService` / bridge    | `debugMessages`     | every model load / save / remove, with key and JSON |
+| `SaveGameManager`          | `debugMessages`     | every component load / save, with key and JSON |
+| `ViewService`              | `debugMessages`     | the navigation history on each push/pop |
+| `StateService`             | `debugMessages`     | every emitted event, status change and subscription run |
+
+`SoundService` has no such flag - it logs errors only (unknown key, missing
+emitter).
+
+In the Sample every one of these is `true`, so a fresh Play fills the Console
+with the full picture. It is noisy - `StateService` logs on every frame in which
+something was emitted - so turn the flags back off once you have seen it work.
+
+**4. Read the Sample README**, which walks through each system against the real
+scripts: [Assets/Sample/README.md](Assets/Sample/README.md).
+
+**5. Read the system docs**, in this order if you are new:
+
+| Doc | Read it when |
+| --- | --- |
+| [BaseClasses.md](Docs/BaseClasses.md) | first - the four base classes everything derives from |
+| [DependencyManager.md](Docs/DependencyManager.md) | you register services and inject them |
+| [SaveGameManager.md](Docs/SaveGameManager.md) | you persist MonoBehaviour state |
+| [DataModels.md](Docs/DataModels.md) | you want observable models and UI binding |
+| [UI.md](Docs/UI.md) | you build screens, widgets and dynamic lists |
+| [TickDispatcher.md](Docs/TickDispatcher.md) | you want to replace `Update()` |
+| [StateService.md](Docs/StateService.md) | you need decoupled event/status reactions |
+| [SoundService.md](Docs/SoundService.md) | you play sounds by key |
+| [SimplePool.md](Docs/SimplePool.md) | you pool frequently spawned objects |
+
+**6. Before you edit a data template, know the generator.** Data models are
+generated, never written by hand. If you change a `*.DataModels.Templates`
+class, run **`Tools → UnityCodeGen → Generate`**; the whole
+`Assets/Scripts/GeneratedDataModels/` folder is deleted and rebuilt from your
+templates.
+
+### Installing into your own project
+
+Copy `Assets/CherryFramework` (and `Assets/ThirdParty/Plugins/DOTween`, which
+it depends on) into your project. Then create one component deriving from
+`InstallerBehaviourBase`, add it to a GameObject, and fill its `[SerializeField]`
+references **in the Inspector** - an unassigned reference stays `null` and
+injection will fail:
+
+```csharp
+[DefaultExecutionOrder(-10000)]
+public class GameInstaller : InstallerBehaviourBase
+{
+    [SerializeField] private GlobalAudioSettings _audioSettings;
+    [SerializeField] private List<AudioEventsCollection> _audioEvents;
+    [SerializeField] private RootPresenterBase _uiRoot;   // scene object
+
+    protected override void Install()
+    {
+        // debugMessages: true while you are learning - it prints what the
+        // services are doing. Set it to false once you have seen the output.
+        BindAsSingleton(new Ticker());
+        BindAsSingleton(new StateService(true));
+        BindAsSingleton(new SoundService(_audioSettings, _audioEvents));
+        BindAsSingleton(new ViewService(_uiRoot, true));
+    }
+}
+```
+
+`[DefaultExecutionOrder(-10000)]` is **not inherited** - every installer has to
+declare it, otherwise `Install()` runs in the default order and other objects
+can receive `[Inject]` fields before they are filled.
 
 ---
 
@@ -63,27 +208,40 @@ The foundation of the framework, enabling loose coupling and testability. The DI
 **Example**:
 
 ```csharp
-// Installer
+using CherryFramework.BaseClasses;
+using CherryFramework.DependencyManager;
+using CherryFramework.SaveGameManager;
+using CherryFramework.StateService;
+using CherryFramework.TickDispatcher;
+using CherryFramework.Utils.PlayerPrefsWrapper;
+
+// Installer: add this component to any GameObject in the scene.
+// [DefaultExecutionOrder] is NOT inherited, so every installer subclass must
+// declare it again - otherwise Install() runs in the default order and other
+// objects can reach [Inject] fields before they are filled.
+// Install() is called from Awake(), before your gameplay objects start.
 [DefaultExecutionOrder(-10000)]
 public class GameInstaller : InstallerBehaviourBase
 {
     protected override void Install()
     {
-        BindAsSingleton<ILogger, FileLogger>();
-        BindAsSingleton<PlayerModel>();
-        Bind<EnemyFactory>(BindingType.Transient);
+        var playerPrefs = new PlayerPrefsData();
+        BindAsSingleton(new SaveGameManager(playerPrefs, true));
+        BindAsSingleton(new StateService(true));
+        BindAsSingleton(new Ticker());
     }
 }
 
-// Usage
+// Usage: inherit BehaviourBase - it injects your [Inject] fields in OnEnable,
+// so they are already filled by the time Start() runs.
 public class PlayerController : BehaviourBase
 {
-    [Inject] private ILogger _logger;
-    [Inject] private PlayerModel _playerModel;
+    [Inject] private Ticker _ticker;
+    [Inject] private StateService _stateService;
 
     private void Start()
     {
-        _logger.Log("Player controller initialized");
+        _stateService.EmitEvent("GameStarted");
     }
 }
 ```
@@ -153,7 +311,7 @@ A comprehensive save/load system for game objects and components. Supports both 
 **Key Features**:
 
 - Automatic transform saving (position, rotation, scale)
-- GUID-based identification for scene objects (auto-generated for scenes in Build Settings)
+- GUID-based identification for scene objects (fill the guid with the **Fill Guid** button in the Inspector)
 - Custom ID + suffix system for spawnable objects
 - Multiple save slot support
 - Pre/post save/load lifecycle callbacks
@@ -412,32 +570,42 @@ All framework components derive from these foundational classes:
 **Example**:
 
 ```csharp
+using CherryFramework.BaseClasses;
+using CherryFramework.DataModels;
+using CherryFramework.DependencyManager;
+using CherryFramework.StateService;
+using GeneratedDataModels;
+
+// Plain C# class (not a MonoBehaviour). InjectClass fills the [Inject] fields
+// before the constructor body runs; Dispose() fires the cleanup callbacks.
 public class MyService : GeneralClassBase
 {
-    [Inject] private ILogger _logger;
+    [Inject] private StateService _stateService;
 
     public MyService()
     {
-        // Auto-injected
-        _logger.Log("Service created");
+        _stateService.EmitEvent("ServiceCreated");
 
-        // Register cleanup
-        AddUnsubscription(() => {
-            _logger.Log("Service cleaned up");
-        });
+        AddUnsubscription(() => _stateService.EmitEvent("ServiceDisposed"));
     }
 }
 
+// MonoBehaviour version. BehaviourBase injects in OnEnable and releases all
+// bindings in OnDestroy, so there is nothing to unhook by hand.
 public class MyComponent : BehaviourBase
 {
-    [Inject] private PlayerModel _player;
+    [Inject] private GameStateDataModel _gameState;
 
     protected override void OnEnable()
     {
         base.OnEnable();
 
-        // Bindings auto-cleanup on destroy
-        Bindings.CreateBinding(_player.HealthAccessor, OnHealthChanged);
+        Bindings.CreateBinding(_gameState.DistanceTraveledAccessor, OnDistanceChanged);
+    }
+
+    private void OnDistanceChanged(int distance)
+    {
+        Debug.Log($"Distance: {distance}");
     }
 }
 ```
@@ -477,36 +645,50 @@ public class MyComponent : BehaviourBase
 ### 1. Installation
 
 1. Copy CherryFramework into your Unity project's `Assets` folder
-2. Ensure [dependencies](#Dependencies): DOTween, Newtonsoft.Json, etc, see Dependencies Section
+2. Ensure [dependencies](#dependencies-included-in-project): DOTween, Newtonsoft.Json, etc, see Dependencies Section
 3. Add framework namespaces to your assembly definition files
 
 ### 2. Initial Setup
 
+This is the full installer. A minimal four-line version is shown earlier, in
+[Installing into your own project](#installing-into-your-own-project).
+
 ```csharp
+using CherryFramework.DataModels;
+using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.DependencyManager;
+using CherryFramework.SaveGameManager;
+using CherryFramework.SoundService;
+using CherryFramework.StateService;
+using CherryFramework.TickDispatcher;
+using CherryFramework.UI.Views;
+using CherryFramework.Utils.PlayerPrefsWrapper;
+using UnityEngine;
+
+// [DefaultExecutionOrder] is NOT inherited - every installer must declare it,
+// otherwise Install() can run after objects that expect their [Inject] fields.
 [DefaultExecutionOrder(-10000)]
 public class ProjectInstaller : InstallerBehaviourBase
 {
+    // These are Inspector references - an unassigned one stays null and
+    // injection will fail with a null reference later.
     [SerializeField] private RootPresenterBase _rootUI;
     [SerializeField] private GlobalAudioSettings _audioSettings;
     [SerializeField] private List<AudioEventsCollection> _audioCollections;
 
     protected override void Install()
     {
-        // Core services (one shared IPlayerPrefs instance for all persistent data)
+        // One shared IPlayerPrefs instance for both save systems, so a value
+        // written by SaveGameManager and by ModelService lands in the same store
         var playerPrefs = new PlayerPrefsData();
-        BindAsSingleton(new SaveGameManager(playerPrefs, true));
-        BindAsSingleton(new StateService(true));
+
         BindAsSingleton(new Ticker());
+        BindAsSingleton(new StateService(true));
+        BindAsSingleton(new SaveGameManager(playerPrefs, true));
+        BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), true));
 
-        // UI
         BindAsSingleton(new ViewService(_rootUI, true));
-
-        // Audio
         BindAsSingleton(new SoundService(_audioSettings, _audioCollections));
-
-        // Models
-        var modelService = new ModelService(new PlayerPrefsBridge(playerPrefs), true);
-        BindAsSingleton(modelService);
     }
 }
 ```
@@ -566,4 +748,4 @@ public class Player : BehaviourBase, IGameSaveData
 - UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
 - Editor Decoration - https://github.com/v0lt13/EditorAttributes.git
 
-If you want to integrate save game data to Steam or other cloud services, I advise to use https://github.com/richardelms/FileBasedPlayerPrefs - a direct replacement to Unity's PlayerpRefs, that stores user data in an ordinary JSON files
+If you want to integrate save game data to Steam or other cloud services, I advise to use https://github.com/richardelms/FileBasedPlayerPrefs - a direct replacement for Unity's PlayerPrefs, that stores user data in an ordinary JSON files

@@ -2,8 +2,8 @@
 
 // Source classes for Data Models are called Templates
 // They must be in a namespace ending with DataModels.Templates
-// When you call Menu - Tools - UnityGodeGen - Generate all the templates are processed
-// and resulting Data Models are placed in Assets/GeneratedDataModels folder
+// When you call Menu - Tools - UnityCodeGen - Generate all the templates are processed
+// and resulting Data Models are placed in Assets/Scripts/GeneratedDataModels folder
 namespace Sample.DataModels.Templates
 {
     [Serializable]

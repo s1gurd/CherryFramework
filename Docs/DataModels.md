@@ -23,7 +23,7 @@ The CherryFramework Data Models system provides a robust, observable data layer 
 
 - **Centralized Model Management**: `ModelService` handles all model instances
 - **Observable Properties**: Automatic change notification
-- **Two-way Binding**: Bind UI elements to model data
+- **One-way (downward) bindings**: the model pushes changes to your subscribers. The framework does **not** push UI input back into a model - call the model property setter yourself when you need that.
 - **Binding Activation Modes**: Control when a binding first fires and whether it delivers updates before the model is ready (`BindingActivation` enum)
 - **Value Processing**: Transform values through pipelines
 - **Automatic Persistence**: Save/load models to PlayerPrefs or custom storage, with `ReadyMode` control over when a model becomes ready after loading
@@ -33,6 +33,24 @@ The CherryFramework Data Models system provides a robust, observable data layer 
 - **Type Safety**: Generic accessors and bindings
 
 ---
+
+### Namespaces Used by the Examples
+
+```csharp
+using System;                                  // Func<>, Action<>
+using CherryFramework.BaseClasses;              // BehaviourBase
+using CherryFramework.DataModels;               // DataModelBase, Accessor<T>, Bindings
+using CherryFramework.DataModels.ModelDataStorageBridges; // PlayerPrefsBridge
+using CherryFramework.DependencyManager;        // [Inject], InstallerBehaviourBase
+using CherryFramework.StateService;             // StateService
+using CherryFramework.Utils.PlayerPrefsWrapper; // PlayerPrefsData
+using Newtonsoft.Json;                          // JsonIgnore
+using UnityEngine;                              // MonoBehaviour, Mathf, Debug
+```
+
+`[JsonIgnore]` here is `Newtonsoft.Json.JsonIgnoreAttribute`, **not** the one
+from `System.Text.Json`. Generated models use Newtonsoft, and using the wrong
+attribute leaves your accessor serialized into the save file.
 
 ## ModelService
 
@@ -83,6 +101,7 @@ public class ModelService
 #### Basic Setup in Installer
 
 ```csharp
+[DefaultExecutionOrder(-10000)]
 public class GameInstaller : InstallerBehaviourBase
 {
     [SerializeField] private bool _debugModels = true;
@@ -248,11 +267,18 @@ Notifies all subscribers of a property change.
 public void FillFrom(object instance)
 ```
 
-Copies same-named, same-typed members from an existing instance (for example
-a template or a DTO) into this model: for every writable model property, the
-value is taken from the source's property of the same name, falling back to
-its field. Reflection results are cached per `(source type, model type)`
-pair, so repeated calls are cheap.
+Copies same-named, same-typed members from an existing instance (for example a
+template or a DTO) into this model. For each **writable** member of this model
+it looks up a source property and a source field of the same name, and writes
+whatever it finds - **a field wins over a property**, because the field lookup
+runs second and overwrites. Only members of the same exact type are matched.
+
+Note that the source members are looked up across the whole hierarchy including
+non-public ones, and that `Ready`, `Id` and `SlotId` are writable properties
+too - so a source object with those names will overwrite them.
+
+Reflection results are cached per `(source type, model type)` pair, so
+repeated calls are cheap.
 
 ```csharp
 // Populate a model from a plain data class without manual assignment
@@ -270,6 +296,12 @@ public class PlayerModel : DataModelBase
     private int _health;
     private int _maxHealth;
     private string _playerName;
+    private int _level;
+    private int _score;
+    private int _mana;
+    private int _maxMana;
+    private int _experience;
+    private int _gold;
 
     public PlayerModel()
     {
@@ -285,6 +317,32 @@ public class PlayerModel : DataModelBase
         Getters.Add(nameof(PlayerName), new Func<string>(() => PlayerName));
         Setters.Add(nameof(PlayerName), new Action<string>(o => PlayerName = o));
         PlayerNameAccessor = new Accessor<string>(this, nameof(PlayerName));
+
+        // Same three lines for every other member. A plain auto-property is
+        // enough as long as you still register it and expose an accessor.
+        Getters.Add(nameof(Level), new Func<int>(() => Level));
+        Setters.Add(nameof(Level), new Action<int>(o => Level = o));
+        LevelAccessor = new Accessor<int>(this, nameof(Level));
+
+        Getters.Add(nameof(Score), new Func<int>(() => Score));
+        Setters.Add(nameof(Score), new Action<int>(o => Score = o));
+        ScoreAccessor = new Accessor<int>(this, nameof(Score));
+
+        Getters.Add(nameof(Mana), new Func<int>(() => Mana));
+        Setters.Add(nameof(Mana), new Action<int>(o => Mana = o));
+        ManaAccessor = new Accessor<int>(this, nameof(Mana));
+
+        Getters.Add(nameof(MaxMana), new Func<int>(() => MaxMana));
+        Setters.Add(nameof(MaxMana), new Action<int>(o => MaxMana = o));
+        MaxManaAccessor = new Accessor<int>(this, nameof(MaxMana));
+
+        Getters.Add(nameof(Experience), new Func<int>(() => Experience));
+        Setters.Add(nameof(Experience), new Action<int>(o => Experience = o));
+        ExperienceAccessor = new Accessor<int>(this, nameof(Experience));
+
+        Getters.Add(nameof(Gold), new Func<int>(() => Gold));
+        Setters.Add(nameof(Gold), new Action<int>(o => Gold = o));
+        GoldAccessor = new Accessor<int>(this, nameof(Gold));
     }
 
     public int Health
@@ -300,33 +358,51 @@ public class PlayerModel : DataModelBase
     public int MaxHealth
     {
         get => _maxHealth;
-        set
-        {
-            _maxHealth = value;
-            Send(nameof(MaxHealth), value);
-        }
+        set { _maxHealth = value; Send(nameof(MaxHealth), value); }
     }
 
     public string PlayerName
     {
         get => _playerName;
-        set
-        {
-            _playerName = value;
-            Send(nameof(PlayerName), value);
-        }
+        set { _playerName = value; Send(nameof(PlayerName), value); }
+    }
+
+    public int Level { get => _level; set { _level = value; Send(nameof(Level), value); } }
+    public int Score { get => _score; set { _score = value; Send(nameof(Score), value); } }
+    public int Experience { get => _experience; set { _experience = value; Send(nameof(Experience), value); } }
+    public int Gold { get => _gold; set { _gold = value; Send(nameof(Gold), value); } }
+
+    public int MaxMana
+    {
+        get => _maxMana;
+        set { _maxMana = value; Send(nameof(MaxMana), value); }
+    }
+
+    public int Mana
+    {
+        get => _mana;
+        set { _mana = Mathf.Clamp(value, 0, MaxMana); Send(nameof(Mana), _mana); }
     }
 
     // Accessors for binding
     [JsonIgnore] public Accessor<int> HealthAccessor { get; private set; }
     [JsonIgnore] public Accessor<int> MaxHealthAccessor { get; private set; }
     [JsonIgnore] public Accessor<string> PlayerNameAccessor { get; private set; }
+    [JsonIgnore] public Accessor<int> LevelAccessor { get; private set; }
+    [JsonIgnore] public Accessor<int> ScoreAccessor { get; private set; }
+    [JsonIgnore] public Accessor<int> ManaAccessor { get; private set; }
+    [JsonIgnore] public Accessor<int> MaxManaAccessor { get; private set; }
+    [JsonIgnore] public Accessor<int> ExperienceAccessor { get; private set; }
+    [JsonIgnore] public Accessor<int> GoldAccessor { get; private set; }
 }
 ```
 
+Every example further down uses these accessors, so a single consistent
+`PlayerModel` backs all of them.
+
 ---
 
-## Accessor&lt;T&gt;
+## Accessor<T>
 
 **Namespace**: `CherryFramework.DataModels`
 
@@ -382,22 +458,25 @@ public class GameUI : BehaviourBase
             healthText.text = $"HP: {health}";
         });
 
-        // Binding with value processing
-        _playerModel.ScoreAccessor
-            .AddProcessor(score => score * 100) // Convert to points
-            .AddProcessor(score => Mathf.RoundToInt(score)); // Round
+        // Binding with value processing.
+        // AddProcessor returns a ValueProcessor, NOT the accessor, so these
+        // calls cannot be chained. Each one is a separate statement.
+        _playerModel.ScoreAccessor.AddProcessor(score => score * 100);          // Convert to points
+        _playerModel.ScoreAccessor.AddProcessor(score => Mathf.RoundToInt(score)); // Round
 
         // Processors run in priority order (lower numbers first)
-        _playerModel.NameAccessor
-            .AddProcessor(name => name.ToUpper(), priority: 10) // Runs first
-            .AddProcessor(name => $"Player: {name}", priority: 0); // Runs second
+        _playerModel.NameAccessor.AddProcessor(name => name.ToUpper(), priority: 10);      // Runs first
+        _playerModel.NameAccessor.AddProcessor(name => $"Player: {name}", priority: 0);    // Runs second
     }
 }
 ```
 
+Calling `AddProcessor` twice on the same accessor adds **two** processors to the
+pipeline, it does not replace the first one.
+
 ---
 
-Bindings System
+## Bindings System
 
 ### DownwardBindingHandler
 
@@ -517,13 +596,16 @@ public class PlayerHUD : BehaviourBase
 ### Manual Binding Without Auto-cleanup (not recommended, but possible)
 
 ```csharp
-public class TempUI : MonoBehaviour, IInjectTarget
+public class TempUI : MonoBehaviour
 {
     [Inject] private readonly ModelService _modelService;
     private DownwardBindingHandler _binding;
 
-    private void OnEnable()
+    private void Start()
     {
+        // A bare MonoBehaviour is not injected automatically - inject yourself
+        DependencyContainer.Instance.InjectDependencies(this);
+
         var player = _modelService.GetOrCreateSingletonModel<PlayerModel>();
         _binding = player.HealthAccessor.BindDownwards(OnHealthChanged);
     }
@@ -592,21 +674,23 @@ public class CurrencyDisplay : BehaviourBase
     {
         _player = _modelService.GetOrCreateSingletonModel<PlayerModel>();
 
-        _player.GoldAccessor
-            // Stage 1: Apply modifiers (highest priority = runs last)
-            .AddProcessor(gold => ApplyGuildBonus(gold), priority: 100)
-            // Stage 2: Apply tax (medium priority)
-            .AddProcessor(gold => ApplyTax(gold), priority: 50)
-            // Stage 3: Format for display (lowest priority = runs first)
-            .AddProcessor(gold => FormatGold(gold), priority: 0);
-        
-        // Bind to UI. Not that Processed Value is used to set text
-        Bindings.CreateBinding(_player.GoldAccessor, _ => goldText.text = _player.GoldAccessor.ProcessedValue);
+        // AddProcessor returns ValueProcessor, so these are separate statements.
+        // Higher priority numbers run LAST.
+        _player.GoldAccessor.AddProcessor(gold => ApplyGuildBonus(gold), priority: 100); // runs last
+        _player.GoldAccessor.AddProcessor(gold => ApplyTax(gold), priority: 50);         // runs in the middle
+        _player.GoldAccessor.AddProcessor(gold => gold, priority: 0);                   // runs first
+
+        // Bind to UI. The callback receives the RAW value - read ProcessedValue instead.
+        Bindings.CreateBinding(_player.GoldAccessor,
+            _ => goldText.text = _player.GoldAccessor.ProcessedValue.ToString());
     }
 
     private int ApplyGuildBonus(int gold) => Mathf.RoundToInt(gold * 1.1f);
     private int ApplyTax(int gold) => Mathf.RoundToInt(gold * 0.95f);
-    private string FormatGold(int gold) => $"{gold:N0} GP";
+
+    // A processor must return the SAME type as the accessor (int here).
+    // Formatting to a string cannot be done in a processor - do it in the
+    // binding callback instead, which is what the line above does.
 }
 ```
 
@@ -654,8 +738,11 @@ public class PlayerPrefsBridge : ModelDataStorageBridgeBase
 {
     public PlayerPrefsBridge(IPlayerPrefs playerPrefs);
 
-    // Key generation pattern: {id}-{slotId}-{type}
-    // For singletons: SINGLETON-{slotId}-{type}
+// Key generation pattern: {id}-{slotId}-{namespace.TypeName}
+// Empty segments are dropped, so a model with no id or no slotId produces a
+// shorter key. For a singleton with an empty SlotId the key is:
+//   "SINGLETON-CherryFramework.Sample.PlayerModel"
+// and NOT "SINGLETON--CherryFramework.Sample.PlayerModel".
 }
 ```
 
@@ -779,7 +866,7 @@ public class ModelsSaver : BehaviourBase
 
 ### Template-Based Generation
 
-**Template Class** (ExampleData.cs):
+**Template Class** (`ExampleData.cs`):
 
 ```csharp
 namespace CherryFramework.DataModels.Templates
@@ -787,36 +874,60 @@ namespace CherryFramework.DataModels.Templates
     public class ExampleData
     {
         public string Foo = "foo";
-        public int Bar;
-        public float Baz;
     }
 }
 ```
 
-**Generated Model** (ExampleModel.Generated.cs):
+### How the Model Gets Its Name
+
+The generated class name is **not** the template name with "Model" appended.
+The generator does this:
+
+```csharp
+baseModelName = templateName.Replace("Template", "") + "Model";
+```
+
+So the only thing it removes is the literal word `Template`:
+
+| Template class      | Generated model         |
+| ------------------- | ----------------------- |
+| `ExampleData`       | `ExampleDataModel`      |
+| `GameStateData`     | `GameStateDataModel`    |
+| `EnemyStatsTemplate`| `EnemyStatsModel`       |
+
+`ExampleData` contains no "Template", so nothing is stripped and you get
+**`ExampleDataModel`**, not `ExampleModel`. If you want a shorter name, name
+your template `ExampleTemplate`.
+
+The output always lands in namespace `GeneratedDataModels`, in the folder
+`Assets/Scripts/GeneratedDataModels` (see `CodeGenConstants`).
+
+**Generated Model** (`ExampleDataModel.Generated.cs`):
 
 ```csharp
 // <auto-generated/>
 namespace GeneratedDataModels
 {
     [Serializable]
-    public class ExampleModel : DataModelBase
+    public class ExampleDataModel : DataModelBase
     {
         private ExampleData _template = new();
 
-        public ExampleModel() : base()
+        public ExampleDataModel() : base()
         {
             Getters.Add(nameof(Foo), new Func<string>(() => Foo));
             Setters.Add(nameof(Foo), new Action<string>(o => Foo = o));
             FooAccessor = new Accessor<string>(this, nameof(Foo));
+        }
 
-            Getters.Add(nameof(Bar), new Func<int>(() => Bar));
-            Setters.Add(nameof(Bar), new Action<int>(o => Bar = o));
-            BarAccessor = new Accessor<int>(this, nameof(Bar));
-
-            Getters.Add(nameof(Baz), new Func<float>(() => Baz));
-            Setters.Add(nameof(Baz), new Action<float>(o => Baz = o));
-            BazAccessor = new Accessor<float>(this, nameof(Baz));
+        // The generator also emits a constructor that copies from a template
+        // instance. It requires the template to implement ICloneable.
+        public ExampleDataModel(ExampleData source) : this()
+        {
+            if (source != null)
+            {
+                if (source is ICloneable cloneable) { /* deep copy */ }
+            }
         }
 
         public string Foo
@@ -825,23 +936,13 @@ namespace GeneratedDataModels
             set { _template.Foo = value; Send<string>(nameof(Foo), value); }
         }
         [JsonIgnore] public Accessor<string> FooAccessor;
-
-        public int Bar
-        {
-            get => _template.Bar;
-            set { _template.Bar = value; Send<int>(nameof(Bar), value); }
-        }
-        [JsonIgnore] public Accessor<int> BarAccessor;
-
-        public float Baz
-        {
-            get => _template.Baz;
-            set { _template.Baz = value; Send<float>(nameof(Baz), value); }
-        }
-        [JsonIgnore] public Accessor<float> BazAccessor;
     }
 }
 ```
+
+Every **public field** of the template becomes a property plus a matching
+`{Field}Accessor` field - so a template field named `JumpForce` yields
+`JumpForceAccessor`, capital F.
 
 ### Generator Configuration
 
@@ -871,8 +972,8 @@ public class StatsData<T> where T : struct, new()
     public T Value;
 }
 
-// Generated (file: StatsModel.T.Generated.cs)
-public class StatsModel<T> : DataModelBase where T : struct, new()
+// Generated (file: StatsDataModel.T.Generated.cs)
+public class StatsDataModel<T> : DataModelBase where T : struct, new()
 {
     private StatsData<T> _template = new();
     ...
@@ -888,11 +989,11 @@ Non-generic templates are unaffected and generate as before.
 public class GameManager : BehaviourBase
 {
     [Inject] private readonly ModelService _modelService;
-    private ExampleModel _example;
+    private ExampleDataModel _example;
 
     private void Start()
     {
-        _example = _modelService.GetOrCreateSingletonModel<ExampleModel>();
+        _example = _modelService.GetOrCreateSingletonModel<ExampleDataModel>();
 
         // Use generated accessors
         _example.FooAccessor.BindDownwards(value => Debug.Log($"Foo changed: {value}"));
@@ -1029,19 +1130,24 @@ public void LevelUp()
 ```csharp
 public class AutoSave : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private StateService _stateService;
+    [Inject] private ModelService _modelService;
 
     private void Start()
     {
-        // Save on important events
-        EventManager.Subscribe("PlayerLevelUp", SaveGame);
-        EventManager.Subscribe("QuestCompleted", SaveGame);
+        // There is no EventManager in this framework. Decoupled reactions go
+        // through StateService: a condition plus a callback.
+        // BehaviourBase implements IUnsubscriber, so StateService removes both
+        // subscriptions automatically on destroy - no AddUnsubscription needed.
+        _stateService.AddStateSubscription(
+            s => s.IsEventActive("PlayerLevelUp"),
+            SaveGame,
+            this);
 
-        // Register cleanup
-        AddUnsubscription(() => {
-            EventManager.Unsubscribe("PlayerLevelUp", SaveGame);
-            EventManager.Unsubscribe("QuestCompleted", SaveGame);
-        });
+        _stateService.AddStateSubscription(
+            s => s.IsEventActive("QuestCompleted"),
+            SaveGame,
+            this);
     }
 
     private void SaveGame()
@@ -1077,9 +1183,10 @@ namespace Game.DataModels.Templates
     }
 }
 
-// 2. Generated model (PlayerProfileModel.Generated.cs) - Auto-generated
+// 2. Generated model (PlayerProfileDataModel.Generated.cs) - Auto-generated
 
 // 3. Installer setup
+[DefaultExecutionOrder(-10000)]
 public class GameInstaller : InstallerBehaviourBase
 {
     protected override void Install()
@@ -1095,21 +1202,21 @@ public class GameInstaller : InstallerBehaviourBase
 public class GameManager : BehaviourBase
 {
     [Inject] private readonly ModelService _modelService;
-    private PlayerProfileModel _profile;
+    private PlayerProfileDataModel _profile;
 
     protected override void OnEnable()
     {
         base.OnEnable();
 
         // Get or create profile
-        _profile = _modelService.GetOrCreateSingletonModel<PlayerProfileModel>();
+        _profile = _modelService.GetOrCreateSingletonModel<PlayerProfileDataModel>();
 
         // Register and load
         _modelService.DataStorage.RegisterModelInStorage(_profile);
         _modelService.DataStorage.LoadModelData(_profile);
 
         // Bind to level changes
-        Bindings.CreateBinding(_profile.levelAccessor, OnLevelChanged);
+        Bindings.CreateBinding(_profile.LevelAccessor, OnLevelChanged);
     }
 
     public void AddExperience(int amount)
@@ -1164,23 +1271,29 @@ public class ProfileUI : BehaviourBase
     [SerializeField] private Transform _achievementsParent;
     [SerializeField] private GameObject _achievementPrefab;
 
-    private PlayerProfileModel _profile;
+    private PlayerProfileDataModel _profile;
 
     protected override void OnEnable()
     {
         base.OnEnable();
 
-        _profile = _modelService.GetOrCreateSingletonModel<PlayerProfileModel>();
+        _profile = _modelService.GetOrCreateSingletonModel<PlayerProfileDataModel>();
 
         // Bind to profile properties
-        Bindings.CreateBinding(_profile.playerNameAccessor, UpdateName);
-        Bindings.CreateBinding(_profile.levelAccessor, UpdateLevel);
-        Bindings.CreateBinding(_profile.goldAccessor, UpdateGold);
-        Bindings.CreateBinding(_profile.achievementsAccessor, UpdateAchievements);
+        Bindings.CreateBinding(_profile.PlayerNameAccessor, UpdateName);
+        Bindings.CreateBinding(_profile.LevelAccessor, UpdateLevel);
+        Bindings.CreateBinding(_profile.GoldAccessor, UpdateGold);
+        Bindings.CreateBinding(_profile.AchievementsAccessor, UpdateAchievements);
 
-        // Processed binding for experience bar
-        _profile.experienceAccessor.AddProcessor(exp => (float)exp / GetExpForLevel(_profile.level));
-        Bindings.CreaateBinding(_profile.experienceAccessor, _ => _expSlider.value = _profile.experienceAccessor.ProcessedValue);
+        // Processed binding for the experience bar.
+        // The processor must return the SAME type as the accessor, so a float
+        // has to be rounded back to int. The callback parameter is the RAW
+        // value - read ProcessedValue for the computed one.
+        _profile.ExperienceAccessor.AddProcessor(
+            exp => Mathf.RoundToInt((float)exp / GetExpForLevel(_profile.level)));
+
+        Bindings.CreateBinding(_profile.ExperienceAccessor,
+            _ => _expSlider.value = _profile.ExperienceAccessor.ProcessedValue);
     }
 
     private void UpdateName(string name) => _nameText.text = name;

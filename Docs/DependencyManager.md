@@ -4,7 +4,7 @@
 
 1. [Overview](#overview)
 2. [Core Concepts](#core-concepts)
-3. [IInjectTarget Interface](#iinjecttarget-interface)
+3. [What Triggers Automatic Injection](#what-triggers-automatic-injection)
 4. [DependencyContainer](#dependencycontainer)
 5. [Binding Types](#binding-types)
 6. [InjectAttribute](#injectattribute)
@@ -15,12 +15,83 @@
 11. [Limitations](#limitations)
 12. [Best Practices](#best-practices)
 13. [Examples](#examples)
+14. [Summary](#summary)
 
 ---
 
 ## Overview
 
-The CherryFramework DependencyManager provides a lightweight dependency injection (DI) container that simplifies service location and promotes loose coupling throughout your application. It supports both singleton and transient lifestyles, with automatic injection into classes that implement `IInjectTarget`.
+The CherryFramework DependencyManager provides a lightweight dependency injection (DI) container that simplifies service location and promotes loose coupling throughout your application. It supports both singleton and transient lifestyles, with automatic injection into any class deriving from `InjectClass` or `InjectMonoBehaviour`.
+
+### Why Use Dependency Injection?
+
+Without DI, a class that needs logging has to build its own logger:
+
+```csharp
+// No DI: the implementation is hard-wired into the class
+public class PlayerService
+{
+    private readonly FileLogger _logger = new FileLogger("game.log");
+}
+```
+
+`PlayerService` now *depends on a concrete type*. You cannot swap it for a
+console logger, and a unit test has to create real files to test the class.
+
+With DI the class only states what it needs:
+
+```csharp
+// With DI: the class asks for the abstraction
+public class PlayerService
+{
+    [Inject] private ILogger _logger;
+}
+```
+
+Now the implementation is decided in exactly one place - the installer - and
+anybody can replace it. That is the whole idea: **depend on the abstraction,
+choose the implementation at the edge**.
+
+### About the Types in These Examples
+
+`ILogger`, `ConsoleLogger`, `FileLogger`, `IAnalyticsService`,
+`AnalyticsService`, `IRepository<T>` and `FileRepository<T>` below are **not**
+framework classes - they are ordinary types you would write yourself, used to
+demonstrate the container. Define them once, in your own project:
+
+```csharp
+public interface ILogger { void Log(string message); }
+
+public class FileLogger : ILogger
+{
+    private readonly string _path;
+    public FileLogger(string path) => _path = path;
+
+    public void Log(string message)
+        => System.IO.File.AppendAllText(_path, message + "\n");
+}
+
+public class ConsoleLogger : ILogger
+{
+    public void Log(string message) => Debug.Log(message);
+}
+
+public interface IAnalyticsService { void Track(string eventName); }
+
+public class AnalyticsService : IAnalyticsService
+{
+    public void Track(string eventName) => Debug.Log("track " + eventName);
+}
+
+public interface IRepository<T>
+{
+    void Save(T data);
+    T Load();
+}
+```
+
+Because they need constructor arguments, `FileLogger` is registered with an
+instance (`BindAsSingleton(new FileLogger("game.log"))`) rather than by type.
 
 ### Key Features
 
@@ -33,9 +104,14 @@ The CherryFramework DependencyManager provides a lightweight dependency injectio
 
 ### Important Requirements
 
-- Only classes that implement `IInjectTarget` can use `[Inject]` attributes
+- Automatic injection requires a base class: inherit `InjectMonoBehaviour`
+  (or `BehaviourBase`) for MonoBehaviours, `InjectClass` (or
+  `GeneralClassBase`) for plain classes. For anything else you must call
+  `DependencyContainer.Instance.InjectDependencies(target)` yourself — the
+  `[Inject]` attribute itself has no such requirement.
 - Classes derived from `InjectClass` and `InjectMonoBehaviour` receive injection automatically
-- Installers must explicitly set `[DefaultExecutionOrder(-10000)]` (or any low value below zero)
+- `[DefaultExecutionOrder]` is **not inherited** — every installer must declare
+  `[DefaultExecutionOrder(-10000)]` (or any low negative value) itself
 
 ---
 
@@ -78,7 +154,7 @@ The CherryFramework DependencyManager provides a lightweight dependency injectio
 
 | Component                | Purpose                                                        |
 | ------------------------ | -------------------------------------------------------------- |
-| `IInjectTarget`          | Marker interface for injectable classes                        |
+| `InjectClass`           | Base class for plain classes; injects in constructor        |
 | `DependencyContainer`    | Central DI container (singleton)                               |
 | `InjectAttribute`        | Marks fields/properties for injection                          |
 | `InjectClass`            | Base for non-MonoBehaviour injectable classes (auto-injection) |
@@ -88,34 +164,43 @@ The CherryFramework DependencyManager provides a lightweight dependency injectio
 
 ---
 
-## IInjectTarget Interface
+## What Triggers Automatic Injection
 
-**Namespace**: `CherryFramework.DependencyManager`
+There is no marker interface. Injection is triggered by the **base class**,
+and by nothing else:
 
-**Purpose**: Marker interface that identifies classes eligible for dependency injection. Only classes that implement this interface can use the `[Inject]` attribute and receive injected dependencies.
+| Base class                            | When injection runs                        |
+| ------------------------------------- | ------------------------------------------ |
+| `InjectClass`                         | in the constructor                        |
+| `InjectMonoBehaviour` (and `BehaviourBase`, which derives from it) | in `OnEnable()` |
 
-```csharp
-public interface IInjectTarget
-{
-    // Marker interface - no members required
-}
-```
-
-**Automatic Injection**: Classes derived from `InjectClass` and `InjectMonoBehaviour` automatically implement `IInjectTarget` and receive injection without any additional code.
-
-**Example**:
+Any other object is left untouched until you ask for it yourself with
+`DependencyContainer.Instance.InjectDependencies(target)`.
 
 ```csharp
-// These classes automatically implement IInjectTarget and receive injection
-public class MyService : InjectClass { }                    // Auto-injected
-public class MyComponent : InjectMonoBehaviour { }          // Auto-injected on OnEnable
+// Auto-injected - base class does the work
+public class MyService : InjectClass { }            // injected in constructor
+public class MyComponent : BehaviourBase { }        // injected in OnEnable
 
-// Manual implementation (rare, not recommended)
-public class CustomClass : IInjectTarget
+// Not auto-injected - nothing runs unless you call it
+public class CustomClass
 {
-    [Inject] private ILogger _logger; // Must be manually injected
+    [Inject] private ILogger _logger;              // stays null
 }
+
+var c = new CustomClass();
+DependencyContainer.Instance.InjectDependencies(c); // now it is filled
 ```
+
+This is verified behaviour, not a convention: the container reflects over the
+type and its base types for `[Inject]` members, and never checks what the type
+implements.
+
+**Order matters.** `InjectDependencies` only fills fields for dependencies that
+are already bound, and binding happens in the installer's `Awake()`. That is
+why installers carry `[DefaultExecutionOrder(-10000)]` — it is not inherited,
+so every installer declares it. If you call `InjectDependencies` manually,
+prefer `Start()`, which always runs after every `Awake`.
 
 ---
 
@@ -347,7 +432,7 @@ public class InjectAttribute : Attribute
 
 ### Usage Requirements
 
-- Can only be used in classes that implement `IInjectTarget`
+- Works in any class; automatic injection requires a base class (see above)
 - Works automatically in classes derived from `InjectClass` or `InjectMonoBehaviour`
 - Fields can be private, protected, or public
 - Properties must have a setter
@@ -357,7 +442,7 @@ public class InjectAttribute : Attribute
 #### Field Injection (Auto-injected)
 
 ```csharp
-public class PlayerController : InjectMonoBehaviour  // Implements IInjectTarget, auto-injected
+public class PlayerController : InjectMonoBehaviour  // auto-injected on OnEnable
 {
     [Inject] private IInputService _input;
     [Inject] private ILogger _logger;
@@ -372,7 +457,7 @@ public class PlayerController : InjectMonoBehaviour  // Implements IInjectTarget
 #### Property Injection (Auto-injected)
 
 ```csharp
-public class GameManager : InjectClass  // Implements IInjectTarget, auto-injected
+public class GameManager : InjectClass  // auto-injected in constructor
 {
     [Inject] public IAnalyticsService Analytics { get; private set; }
     [Inject] public ISaveGameManager SaveGame { get; private set; }
@@ -382,12 +467,12 @@ public class GameManager : InjectClass  // Implements IInjectTarget, auto-inject
 #### Base Class Injection (Auto-injected)
 
 ```csharp
-public abstract class BaseService : InjectClass  // Implements IInjectTarget, auto-injected
+public abstract class BaseService : InjectClass  // auto-injected in constructor
 {
     [Inject] protected ILogger Logger;
 }
 
-public class PlayerService : BaseService  // Inherits IInjectTarget, auto-injected
+public class PlayerService : BaseService  // inherits injection
 {
     [Inject] private IPlayerRepository _repository;
 
@@ -398,18 +483,25 @@ public class PlayerService : BaseService  // Inherits IInjectTarget, auto-inject
 }
 ```
 
-#### Invalid Usage (Will Not Be Injected)
+#### Not Injected Automatically (but injectable by hand)
 
 ```csharp
-// This class does NOT implement IInjectTarget
+// No base class, so nothing triggers automatic injection
 public class RegularClass
 {
-    [Inject] private ILogger _logger; // Will NOT be injected!
+    [Inject] private ILogger _logger; // stays null unless you inject it
 }
 
-// This will not trigger automatic injection
-var regular = new RegularClass(); // _logger remains null
+var regular = new RegularClass();
+Logger.Log("before: " + (_logger == null)); // _logger is null
+
+// Manual injection works on ANY object - no base class, no marker interface
+DependencyContainer.Instance.InjectDependencies(regular);
+Logger.Log("after:  " + (_logger != null)); // _logger is filled
 ```
+
+If you cannot add a base class, call `InjectDependencies` yourself (or make
+the class derive from `InjectClass`, which does it for you).
 
 ---
 
@@ -419,12 +511,12 @@ var regular = new RegularClass(); // _logger remains null
 
 **Namespace**: `CherryFramework.DependencyManager`
 
-**Purpose**: Base class for non-MonoBehaviour classes that need dependency injection. Automatically implements `IInjectTarget` and receives injection on construction.
+**Purpose**: Base class for non-MonoBehaviour classes that need dependency injection. Receives injection in its constructor.
 
-**Inheritance**: `IInjectTarget`
+**Inheritance**: `object`
 
 ```csharp
-public abstract class InjectClass : IInjectTarget
+public abstract class InjectClass
 {
     // Automatically receives injection when constructed
 }
@@ -433,7 +525,6 @@ public abstract class InjectClass : IInjectTarget
 **Features**:
 
 - Automatic injection on construction
-- Implements `IInjectTarget`
 - Safe to use `[Inject]` attributes
 - No manual injection calls needed
 
@@ -461,12 +552,12 @@ var service = new AnalyticsService(); // Dependencies are injected
 
 **Namespace**: `CherryFramework.DependencyManager`
 
-**Purpose**: Base class for Unity MonoBehaviour components that need dependency injection. Automatically implements `IInjectTarget` and receives injection when `OnEnable()` is called.
+**Purpose**: Base class for Unity MonoBehaviour components that need dependency injection. Receives injection when `OnEnable()` is called.
 
-**Inheritance**: `MonoBehaviour`, `IInjectTarget`
+**Inheritance**: `MonoBehaviour`
 
 ```csharp
-public abstract class InjectMonoBehaviour : MonoBehaviour, IInjectTarget
+public abstract class InjectMonoBehaviour : MonoBehaviour
 {
     protected virtual void OnEnable()
     {
@@ -478,7 +569,6 @@ public abstract class InjectMonoBehaviour : MonoBehaviour, IInjectTarget
 **Features**:
 
 - Automatic injection in `OnEnable()`
-- Implements `IInjectTarget`
 - Prevents duplicate injection
 - Works with Unity lifecycle
 
@@ -566,14 +656,14 @@ public class GameInstaller : InstallerBehaviourBase
         if (_useMockServices)
         {
             // Use mock implementations for testing
-            BindAsSingleton<MockAnalyticsService, IAnalyticsService>();
-            BindAsSingleton<MockSaveGameService, ISaveGameService>();
+            Bind<MockAnalyticsService, IAnalyticsService>(BindingType.Singleton);
+            Bind<MockSaveGameService, ISaveGameService>(BindingType.Singleton);
         }
         else
         {
             // Use real implementations
-            BindAsSingleton<AnalyticsService, IAnalyticsService>();
-            BindAsSingleton<SaveGameService, ISaveGameService>();
+            Bind<AnalyticsService, IAnalyticsService>(BindingType.Singleton);
+            Bind<SaveGameService, ISaveGameService>(BindingType.Singleton);
         }
 
         // Bind with specific lifestyle
@@ -598,8 +688,8 @@ public class CoreInstaller : InstallerBehaviourBase
 {
     protected override void Install()
     {
-        BindAsSingleton<ILogger, ConsoleLogger>();
-        BindAsSingleton<IEventDispatcher, EventDispatcher>();
+        Bind<ILogger, ConsoleLogger>(BindingType.Singleton);
+        Bind<IEventDispatcher, EventDispatcher>(BindingType.Singleton);
     }
 }
 
@@ -629,59 +719,50 @@ Dependency injection uses reflection to scan for `[Inject]` attributes. This hap
 - Once per class instance for `InjectClass` derivatives (on construction)
 - Once per component for `InjectMonoBehaviour` derivatives (on first `OnEnable`)
 
-**Impact**: Minimal for most games. For performance-critical code that creates many objects (e.g., pooling systems), consider:
+**Impact**: Minimal for most games. The container caches the resolved members
+per type, so only the first injection of a given type pays for reflection.
+The rule of thumb: inject once into a field, then use the field.
 
 ```csharp
-// For high-frequency object creation, consider object pooling
-public class Bullet : InjectMonoBehaviour
-{
-    [Inject] private ILogger _logger; // Injected once per bullet
-
-    // Better to avoid injection for thousands of objects
-}
-
-// Alternative: Use a manager pattern
+// GOOD - inject once (InjectClass injects in the constructor), then use it
 public class BulletManager : InjectClass
 {
-    [Inject] private ILogger _logger; // Injected once
+    [Inject] private ILogger _logger; // injected once
 
-    public Bullet CreateBullet()
-    {
-        var bullet = new Bullet(); // Regular class, no injection
-        bullet.Initialize(_logger); // Pass dependencies manually
-        return bullet;
-    }
+    public void Report(string message) => _logger.Log(message);
 }
 ```
 
-### 2. Container Lookup
-
-The `DependencyContainer.Instance` access is thread-safe but has minimal overhead. Cache references when possible:
+Do **not** call `InjectDependencies` to "look up" a service. It injects the
+object you hand it and returns *that same object* - it does not resolve
+anything for you:
 
 ```csharp
-// GOOD - Cache after injection
-public class MyService : InjectClass
-{
-    [Inject] private IExpensiveService _service; // Injected once
-
-    public void DoWork()
-    {
-        _service.Process(); // Direct access, no lookup
-    }
-}
-
-// BAD - Repeated container lookups
+// BAD - re-injects on every call, and 'service' is this BadService
 public class BadService : InjectClass
 {
     public void DoWork()
     {
-        var service = DependencyContainer.Instance.InjectDependencies(this); // Lookup each time
-        service.Process();
+        var service = DependencyContainer.Instance.InjectDependencies(this);
+        // 'service' == this, not a dependency, and the work repeats every call
     }
 }
 ```
 
-### 3. Singleton vs Transient
+A MonoBehaviour cannot be created with `new` - if you need many instances of a
+component, either use the framework's object pool or make the helper a plain
+class that the component receives:
+
+```csharp
+// Plain class - safe to construct as many times as you need
+public class Bullet
+{
+    public void Initialize(ILogger logger) => _logger = logger; // passed in
+    private ILogger _logger;
+}
+```
+
+### 2. Singleton vs Transient
 
 - **Singletons**: Created once, minimal overhead
 - **Transient**: Created for each injection, more allocations
@@ -694,7 +775,7 @@ Bind<EnemyFactory>(BindingType.Singleton); // Created once
 Bind<EnemyFactory>(BindingType.Transient); // Created for each injection
 ```
 
-### 4. Memory Usage
+### 3. Memory Usage
 
 - Each binding stores type information in dictionaries
 - Singleton instances persist for container lifetime
@@ -710,15 +791,15 @@ Bind<EnemyFactory>(BindingType.Transient); // Created for each injection
 
 **Causes**:
 
-- Class doesn't implement `IInjectTarget`
+- Class has no base class, so nothing triggers injection
 - For `InjectMonoBehaviour`, `OnEnable()` wasn't called (object disabled)
 - Dependency not registered in container
 
 **Solutions**:
 
 ```csharp
-// SOLUTION 1: Ensure class implements IInjectTarget
-public class MyService : InjectClass // GOOD - implements IInjectTarget
+// SOLUTION 1: Derive from a base class
+public class MyService : InjectClass // GOOD - auto-injected
 {
     [Inject] private ILogger _logger; // Will be injected
 }
@@ -742,7 +823,7 @@ public class CheckInstaller : InstallerBehaviourBase
         if (!DependencyContainer.Instance.HasDependency<ILogger>())
         {
             Debug.LogError("ILogger not registered! Creating default.");
-            BindAsSingleton<ConsoleLogger, ILogger>();
+            Bind<ConsoleLogger, ILogger>(BindingType.Singleton);
         }
     }
 }
@@ -763,7 +844,7 @@ public class GameInstaller : InstallerBehaviourBase
 {
     protected override void Install()
     {
-        BindAsSingleton<ILogger, FileLogger>();
+        Bind<ILogger, FileLogger>(BindingType.Singleton);
     }
 }
 
@@ -856,20 +937,35 @@ public class GameManager : InjectClass
     }
 }
 
-// Always unsubscribe events. This is not needed if using CherryFramework.StateService
-public class EventSubscriber : InjectMonoBehaviour
+// Any MonoBehaviour that must be injected by hand has to call Inject()
+// itself, and OnEnable has to be an 'override' - declaring it 'private'
+// hides the base method and injection never runs.
+//
+// Prefer inheriting BehaviourBase over InjectMonoBehaviour: it releases
+// bindings and unsubscriptions automatically in OnDestroy, so you do not
+// have to hand-write the teardown below.
+public class EventSubscriber : BehaviourBase
 {
-    [Inject] private EventDispatcher _events;
+    [Inject] private StateService _stateService;
 
-    private void OnEnable()
+    private StateSubscription _sub;
+
+    protected override void OnEnable()
     {
-        _events.Subscribe("GameEvent", HandleEvent);
+        base.OnEnable(); // injection happens here
+
+        _sub = _stateService.AddStateSubscription(
+            s => s.IsEventActive("GameEvent"),
+            HandleEvent);
     }
 
-    private void OnDisable()
+    protected override void OnDestroy()
     {
-        _events.Unsubscribe("GameEvent", HandleEvent); // CRITICAL
+        _stateService.RemoveSubscription(_sub); // CRITICAL
+        base.OnDestroy();
     }
+
+    private void HandleEvent() { }
 }
 ```
 
@@ -883,8 +979,8 @@ public class EventSubscriber : InjectMonoBehaviour
 
 ```csharp
 // PROBLEM: Can't have multiple bindings for same type
-DependencyContainer.Instance.BindAsSingleton<ILogger, FileLogger>();
-DependencyContainer.Instance.BindAsSingleton<ILogger, ConsoleLogger>(); // Error mesage!
+DependencyContainer.Instance.Bind<ILogger, FileLogger>(BindingType.Singleton);
+DependencyContainer.Instance.Bind<ILogger, ConsoleLogger>(BindingType.Singleton); // Error!
 
 // SOLUTION: Use factories or named bindings pattern
 public interface ILogger { }
@@ -921,7 +1017,7 @@ public class GameInstaller : InstallerBehaviourBase
     {
         BindAsSingleton<FileLogger>(); // Register concrete types
         BindAsSingleton<ConsoleLogger>();
-        BindAsSingleton<LoggerFactory, ILoggerFactory>();
+        Bind<LoggerFactory, ILoggerFactory>(BindingType.Singleton);
     }
 }
 ```
@@ -973,28 +1069,27 @@ public class MyComponent : InjectMonoBehaviour
 {
     [Inject] private ILogger _logger;
 
+    // Injection happens in OnEnable, so in Awake the field is still null.
     private void Awake()
     {
-        // Dependencies NOT injected yet (OnEnable not called)
-        // _logger is null here
+        // _logger is null here!
+        // Need a dependency this early? Inject manually:
+        Inject();
+        _logger.Log("Ready in Awake");
     }
 
-    private void OnEnable()
+    // OnEnable must be an 'override'. If you declare it 'private' you are
+    // hiding the base method, the base injection never runs, and _logger
+    // stays null.
+    protected override void OnEnable()
     {
-        base.OnEnable(); // Injection happens here
+        base.OnEnable();
+        _logger.Log("Ready in OnEnable");
     }
 
     private void Start()
     {
-        // Dependencies ARE injected (OnEnable ran)
-        _logger.Log("Ready!"); // Works fine
-    }
-
-    // If you need dependencies in Awake, inject manually
-    private void Awake()
-    {
-        Inject(); // Manual injection
-        // Now _logger is available
+        _logger.Log("Ready in Start");
     }
 }
 ```
@@ -1029,8 +1124,8 @@ The container only supports one binding per type. Registering multiple implement
 
 ```csharp
 // Only the first binding is effective
-DependencyContainer.Instance.BindAsSingleton<FileLogger, ILogger>(); // Works
-DependencyContainer.Instance.BindAsSingleton<ConsoleLogger, ILogger>(); // Error!
+DependencyContainer.Instance.Bind<FileLogger, ILogger>(BindingType.Singleton); // Works
+DependencyContainer.Instance.Bind<ConsoleLogger, ILogger>(BindingType.Singleton); // Error!
 ```
 
 ### 3. No Named Bindings
@@ -1046,8 +1141,8 @@ The container does not support binding open generic types. You must bind closed 
 Bind(typeof(IRepository<>), typeof(FileRepository<>)); // Won't work
 
 // REQUIRED
-BindAsSingleton<FileRepository<PlayerData>, IRepository<PlayerData>>();
-BindAsSingleton<FileRepository<ScoreData>, IRepository<ScoreData>>();
+Bind<FileRepository<PlayerData>, IRepository<PlayerData>>(BindingType.Singleton);
+Bind<FileRepository<ScoreData>, IRepository<ScoreData>>(BindingType.Singleton);
 ```
 
 ### 5. No Property Injection Without Setters
@@ -1129,7 +1224,7 @@ public class MyService : InjectClass { }
 public class MyComponent : InjectMonoBehaviour { }  
 
 // BAD - Must manually inject
-public class MyService : IInjectTarget { } // No automatic injection
+public class MyService { } // No automatic injection
 ```
 
 ### 2. Always Apply DefaultExecutionOrder to Installers
@@ -1153,8 +1248,8 @@ public class ProjectInstaller : InstallerBehaviourBase
 {
     protected override void Install()
     {
-        BindAsSingleton<ILogger, FileLogger>();
-        BindAsSingleton<IAnalytics, AnalyticsService>();
+        Bind<ILogger, FileLogger>(BindingType.Singleton);
+        Bind<IAnalytics, AnalyticsService>(BindingType.Singleton);
         Bind<ISaveGame, SaveGameService>(BindingType.Singleton);
     }
 }
@@ -1166,7 +1261,7 @@ Always depend on interfaces, not concrete types:
 
 ```csharp
 // GOOD
-BindAsSingleton<FileRepository, IRepository>();
+Bind<FileRepository, IRepository>(BindingType.Singleton);
 [Inject] private IRepository _repository;
 
 // BAD
@@ -1279,6 +1374,10 @@ public class MyService : InjectClass
 ### Complete Application Setup with Automatic Injection
 
 ```csharp
+using System;
+using CherryFramework.DependencyManager;
+using UnityEngine;
+
 // 1. Define interfaces
 public interface ILogger
 {
@@ -1297,6 +1396,19 @@ public interface IAnalyticsService
 }
 
 // 2. Implement services (derive from InjectClass for auto-injection)
+[Serializable]
+public class PlayerData
+{
+    public string Name;
+    public int Level;
+}
+
+public class JsonRepository<T> : InjectClass, IRepository<T> where T : class
+{
+    public void Save(T data) => Debug.Log("save " + data);
+    public T Load() => null;
+}
+
 public class FileLogger : InjectClass, ILogger
 {
     private string _path;
@@ -1354,11 +1466,11 @@ public class GameInstaller : InstallerBehaviourBase
         BindAsSingleton<ILogger>(logger);
 
         // Bind services
-        BindAsSingleton<PlayerService, IPlayerService>();
-        BindAsSingleton<AnalyticsService, IAnalyticsService>();
+        Bind<PlayerService, IPlayerService>(BindingType.Singleton);
+        Bind<AnalyticsService, IAnalyticsService>(BindingType.Singleton);
 
         // Bind repository
-        BindAsSingleton<JsonRepository<PlayerData>, IRepository<PlayerData>>();
+        Bind<JsonRepository<PlayerData>, IRepository<PlayerData>>(BindingType.Singleton);
 
         Debug.Log("Game dependencies installed");
     }
@@ -1395,16 +1507,16 @@ public class SettingsUI : InjectMonoBehaviour
 
 | Component                | Purpose                       | Injection Behavior                  |
 | ------------------------ | ----------------------------- | ----------------------------------- |
-| `IInjectTarget`          | Marker for injectable classes | Required for injection              |
+
 | `InjectClass`            | Non-MonoBehaviour base        | Auto-injection on construction      |
 | `InjectMonoBehaviour`    | MonoBehaviour base            | Auto-injection on OnEnable          |
-| `InjectAttribute`        | Marks injectable members      | Only works in IInjectTarget classes |
+| `InjectAttribute`        | Marks injectable members      | Works in any class                    |
 | `InstallerBehaviourBase` | Dependency configuration      | Must add `[DefaultExecutionOrder]`  |
 | `DependencyContainer`    | Central DI container          | Singleton access                    |
 
 ### Critical Requirements Summary
 
-1. **Only `IInjectTarget` classes can use `[Inject]`** - Classes must implement this interface
+1. **`[Inject]` needs a base class for automatic injection** - otherwise call `InjectDependencies` yourself
 2. **Deriving from `InjectClass` or `InjectMonoBehaviour` provides automatic injection** - No manual injection calls needed
 3. **Installers must have `[DefaultExecutionOrder]` with a low negative value** - This attribute is not inherited
 4. **Constructor injection is not supported** - Use field/property injection with `[Inject]`

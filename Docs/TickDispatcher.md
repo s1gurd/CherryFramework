@@ -60,7 +60,7 @@ The CherryFramework TickDispatcher provides a centralized update management syst
             │                 │                 │
             ▼                 ▼                 ▼
     ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
-    │ void Tick()   │ │void LateTick()│ │ void FixedTick│
+    │ Tick(float dt) │ │LateTick(float)│ │FixedTick(float)│
     └───────────────┘ └───────────────┘ └───────────────┘
                               │
                               ▼
@@ -83,7 +83,7 @@ The CherryFramework TickDispatcher provides a centralized update management syst
 | `ILateTickable`   | Interface for components that need late updates           |
 | `IFixedTickable`  | Interface for components that need fixed timestep updates |
 | `TickerBehaviour` | Unity MonoBehaviour that drives the Ticker                |
-| `TickableBase<T>` | Internal base class for tickable wrappers                 |
+| `TickableBase<T>` | Internal base class for tickable wrappers - `private`, you cannot use it |
 
 ### Tick Periods
 
@@ -170,8 +170,11 @@ it is then registered in every matching update phase with the same period.
 - `tickPeriod`: Minimum time in seconds between ticks (0 = every frame)
 
 **Timing note**: each registered entry seeds its `LastTick` with the current
-`Time.time`, so the **first tick fires immediately** (within the same frame)
-and `deltaTime` starts small; subsequent ticks respect the period.
+`Time.time` at registration, and a tick only runs once
+`Time.time >= LastTick + tickPeriod`. So with `tickPeriod = 0.2f` the **first
+tick happens about 0.2 s after registration** - not in the same frame - and its
+`deltaTime` is about 0.2. Only `tickPeriod = 0` ticks every frame, and then the
+first `deltaTime` is ~0.
 
 If the object implements `IUnsubscriber`, the Ticker automatically hooks an
 unsubscription into it (see [Automatic Cleanup](#automatic-cleanup)).
@@ -233,7 +236,15 @@ public class PlayerController : MonoBehaviour, ITickable
 public void UnRegister(ITickableBase obj)
 ```
 
-Removes a tickable from all update lists.
+Removes a tickable from **every** update phase it was registered in - this
+mirrors `Register`, which adds the object to all matching phases. An object
+implementing `ITickable` and `ILateTickable` is therefore fully removed by a
+single `UnRegister` call.
+
+> Before this was fixed, `UnRegister` used a `switch` and stopped at the first
+> matching interface, so a multi-interface object stayed registered in the
+> remaining phases and kept ticking after `OnDestroy`. If you are upgrading,
+> this is the one behavioural change to be aware of.
 
 **Example**:
 
@@ -517,12 +528,12 @@ public class BulletManager : ITickable
 {
     private List<Bullet> _activeBullets = new();
 
-    private void Tick()
+    public void Tick(float deltaTime)
     {
         // Manually update only active bullets
         foreach (var bullet in _activeBullets)
         {
-            bullet.Tick();
+            bullet.Tick(deltaTime);
         }
     }
 }
@@ -546,11 +557,11 @@ public void Tick(float deltaTime)
 Removals are processed with a one-frame delay to avoid modifying collections during iteration:
 
 ```csharp
-// When you call RemoveTick(), the object is marked for removal
-_ticker.RemoveTick(enemy);
-
-// It will be removed at the start of the next update cycle
-// This prevents collection modification errors
+// UnRegister() marks the object for removal; the list is actually cleaned at
+// the start of the next update cycle, so collections are never modified while
+// they are being iterated. The delay is an implementation detail - always call
+// the public UnRegister(), never the internal RemoveTick/RemoveLateTick helpers.
+_ticker.UnRegister(enemy);
 ```
 
 ---
@@ -590,7 +601,7 @@ public class MyBehaviour : MonoBehaviour, ITickable
         _ticker.Register(this, checkActivity: true, 0f);
     }
 
-    public void Tick()
+    public void Tick(float deltaTime)
     {
         // If you disable the component, ticks stop
     }
@@ -610,54 +621,50 @@ public class MyBehaviour : MonoBehaviour, ITickable
 **Solutions**:
 
 ```csharp
-// SOLUTION 1: Implement IUnsubscriber
+// SOLUTION 1: Implement IUnsubscriber yourself.
+// Note: implementing the interface is NOT enough on its own - something has
+// to call Dispose(). Ticker only *registers* the cleanup; it never calls it.
 public class CleanObject : ITickable, IUnsubscriber, IDisposable
 {
     private Action _cleanup;
 
-    public void AddUnsubscription(Action action)
-    {
-        _cleanup += action;
-    }
+    public void AddUnsubscription(Action action) => _cleanup += action;
 
-    public void Dispose()
-    {
-        _cleanup?.Invoke(); // Ticker registered its cleanup here
-    }
+    public void Tick(float deltaTime) { }
+
+    // Whoever owns this object must call Dispose() - the Ticker will not.
+    public void Dispose() => _cleanup?.Invoke();
 }
 
 // SOLUTION 2: Manual cleanup
-public class ManualClean : IInjectTarget, ITickable
+public class ManualClean : GeneralClassBase, ITickable
 {
     [Inject] private Ticker _ticker;
 
-    public void Cleanup()
-    {
-        _ticker.UnRegister(this);
-    }
+    public void Tick(float deltaTime) { }
+
+    public void Cleanup() => _ticker.UnRegister(this);
 }
 
-// SOLUTION 3: Use using pattern
-using (var tickable = new MyTickable())
-{
-    _ticker.Register(tickable);
-    // Use it...
-} // Automatically disposed and unregistered
-
-
-// SOLUTION 4 (The best one): Inherit from GeneralClassBase or BehaviourBase
+// SOLUTION 3 (the practical one): inherit BehaviourBase or GeneralClassBase
 public class GoodClass : BehaviourBase, ITickable
 {
-    [Inject] private readonly Ticker _ticker;
+    [Inject] private Ticker _ticker;
 
     private void Start()
     {
        _ticker.Register(this);
     }
 
-    // That's all, no need to cleanup, _ticker.UnRegister(this) will be called in OnDestroy
+    public void Tick(float deltaTime) { }
+    // Nothing else to do: BehaviourBase implements IUnsubscriber and invokes
+    // the cleanup in OnDestroy, so the ticker unregisters automatically.
 }
 ```
+
+There is no `using` pattern here. `Ticker` hooks `IUnsubscriber`, never
+`IDisposable`, so wrapping a registration in `using { }` does nothing - the
+object stays registered after the block ends.
 
 ### Issue 3: Activity Checking Not Working
 
@@ -725,7 +732,7 @@ public class PerformanceOptimized : ITickable
     }
 }
 
-public class EnemyManager : ITickable
+public class EnemyManager : GeneralClassBase, ITickable
 {
     private List<Enemy> _enemies = new();
     private float _timeSinceLastUpdate;
@@ -758,7 +765,7 @@ _ticker.Register(enemyManager, 0.2f);       // External throttling
 ### 3. Use Activity Checking for MonoBehaviours
 
 ```csharp
-public class OptimizedBehaviour : MonoBehaviour, ITickable
+public class OptimizedBehaviour : BehaviourBase, ITickable
 {
     [Inject] private Ticker _ticker;
 
@@ -994,7 +1001,7 @@ public class PlayerController : BehaviourBase, ITickable, ILateTickable
 }
 
 // 3. Enemy manager with pooled enemies
-public class EnemyManager : ITickable
+public class EnemyManager : GeneralClassBase, ITickable
 {
     [Inject] private Ticker _ticker;
 
@@ -1051,7 +1058,7 @@ public class Enemy : ITickable
 }
 
 // 4. Physics system
-public class PhysicsSystem : IFixedTickable
+public class PhysicsSystem : GeneralClassBase, IFixedTickable
 {
     [Inject] private Ticker _ticker;
 
@@ -1060,7 +1067,10 @@ public class PhysicsSystem : IFixedTickable
 
     public void Initialize()
     {
-        _ticker.AddFixedTick(this, 0.02f); // 50 Hz fixed update
+        // AddFixedTick / RemoveFixedTick are internal - use the public
+        // Register / UnRegister. Register picks the right list from the
+        // interfaces the object implements.
+        _ticker.Register(this, 0.02f); // 50 Hz - this class implements IFixedTickable
     }
 
     public void FixedTick(float deltaTime)
@@ -1084,13 +1094,14 @@ public class PhysicsSystem : IFixedTickable
 }
 
 // 5. UI system with different tick rates
-public class UIManager : ITickable
+public class UIManager : GeneralClassBase, ITickable
 {
     [Inject] private Ticker _ticker;
+    [Inject] private HealthBar _healthBar;
+    [Inject] private ScoreDisplay _scoreDisplay;
+    [Inject] private FPSDisplay _fpsDisplay;
 
-    private HealthBar _healthBar;
-    private ScoreDisplay _scoreDisplay;
-    private FPSDisplay _fpsDisplay;
+    private float _lastFPSTime;
 
     public void Initialize()
     {
@@ -1153,53 +1164,55 @@ public class Game : GeneralClassBase
 ### Performance Monitor Example
 
 ```csharp
-public class TickPerformanceMonitor : MonoBehaviour
+// Ticker exposes only Register / UnRegister - it has no timing hooks and no
+// counters, so you cannot get per-object statistics out of it. What you CAN
+// do is measure the cost of your own tick callback:
+public class TickPerformanceMonitor : BehaviourBase, ITickable
 {
     [Inject] private Ticker _ticker;
 
-    private Dictionary<ITickableBase, TickStats> _stats = new();
-    private float _monitorInterval = 5f;
+    private readonly System.Diagnostics.Stopwatch _stopwatch = new();
+    private float _reportInterval = 5f;
     private float _timeSinceLastReport;
+    private int _tickCount;
+    private double _totalMilliseconds;
+    private double _maxMilliseconds;
 
-    private class TickStats
+    protected override void OnEnable()
     {
-        public int tickCount;
-        public float totalTime;
-        public float maxTime;
-        public string type;
+        base.OnEnable();
+        _ticker.Register(this);
     }
 
-    private void Update()
+    public void Tick(float deltaTime)
     {
-        _timeSinceLastReport += Time.deltaTime;
+        _stopwatch.Restart();
+        DoWork();
+        _stopwatch.Stop();
 
-        if (_timeSinceLastReport >= _monitorInterval)
-        {
-            ReportStats();
-            _timeSinceLastReport = 0;
-        }
+        double ms = _stopwatch.Elapsed.TotalMilliseconds;
+        _tickCount++;
+        _totalMilliseconds += ms;
+        if (ms > _maxMilliseconds) _maxMilliseconds = ms;
+
+        _timeSinceLastReport += deltaTime;
+        if (_timeSinceLastReport < _reportInterval) return;
+
+        Debug.Log($"[Tick] calls: {_tickCount}, avg: {_totalMilliseconds / _tickCount:F3}ms, max: {_maxMilliseconds:F3}ms");
+
+        _tickCount = 0;
+        _totalMilliseconds = 0;
+        _maxMilliseconds = 0;
+        _timeSinceLastReport = 0;
     }
 
-    private void ReportStats()
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"--- Ticker Performance Report ---");
-
-        foreach (var stat in _stats.Values)
-        {
-            float avgTime = stat.totalTime / stat.tickCount * 1000; // Convert to ms
-            sb.AppendLine($"{stat.type}: Avg {avgTime:F3}ms, Max {stat.maxTime*1000:F3}ms, Calls {stat.tickCount}");
-        }
-
-        Debug.Log(sb.ToString());
-
-        // Reset stats
-        _stats.Clear();
-    }
-
-    // Note: This would require extending Ticker to report timings
+    private void DoWork() { /* the work you want to measure */ }
 }
 ```
+
+Note the `Stopwatch` overhead is far smaller than one frame, but for accurate
+per-object numbers across many objects you would have to add the measurement
+inside `Ticker` itself.
 
 ---
 

@@ -22,7 +22,7 @@ namespace CherryFramework.SaveGameManager
         
         [SerializeField] private bool spawnableObject;
         [ShowField(nameof(spawnableObject))][SerializeField] private string customId = "OBJ";
-        [HideField(nameof(spawnableObject))][MessageBox("For auto-filling of guid, you have to add scene to Build Settings!", nameof(SceneNotInSettings), MessageMode.Warning, drawAbove: true)]
+        [HideField(nameof(spawnableObject))][MessageBox("Press \"Fill Guid\" to generate a guid for this object. The scene must be added to Build Settings, otherwise the generated id is not stable.", nameof(SceneNotInSettings), MessageMode.Warning, drawAbove: true)]
         [ReadOnly] public string guid = null;
         
         [SerializeField] private bool saveTransform;
@@ -34,9 +34,9 @@ namespace CherryFramework.SaveGameManager
         [Inject] private readonly SaveGameManager _saveGame;
         [Inject] private readonly ModelService _modelService;
         
-        [SaveGameData] private Vector3 _position;
-        [SaveGameData] private Quaternion _rotation;
-        [SaveGameData] private Vector3 _scale;
+        [SaveGameData] protected Vector3 _position;
+        [SaveGameData] protected Quaternion _rotation;
+        [SaveGameData] protected Vector3 _scale;
 
         public bool ForceReset => forceReset;
         public int? CustomSuffix { get; private set; }

@@ -30,12 +30,12 @@ namespace Sample
             // Notice that binding order matters - if some binded class A want to receive instance of class B
             // then you have to bind class B before class A 
             BindAsSingleton<Ticker>();
-            BindAsSingleton(new StateService(false));
+            BindAsSingleton(new StateService(true));
             var playerPrefs = new PlayerPrefsData();
-            BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), false));
-            BindAsSingleton(new SaveGameManager(playerPrefs, false));
+            BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), true));
+            BindAsSingleton(new SaveGameManager(playerPrefs, true));
             BindAsSingleton(new SoundService(globalAudioSettings, audioEvents));
-            BindAsSingleton(new ViewService(uiRoot, false));
+            BindAsSingleton(new ViewService(uiRoot, true));
             BindAsSingleton(new InputSystem_Actions());
             BindAsSingleton(gameSettings);
             BindAsSingleton(Camera.main);

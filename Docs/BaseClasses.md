@@ -55,18 +55,35 @@ public class MyComponent : BehaviourBase
 **Example**:
 
 ```csharp
+using CherryFramework.BaseClasses;
+using CherryFramework.DependencyManager;
+using CherryFramework.StateService;
+
 public class MyService : GeneralClassBase
 {
+    [Inject] private StateService _stateService;
+
+    private StateSubscription _sub;
+
     public MyService()
     {
-        EventManager.Subscribe("GameEvent", HandleEvent);
-        // Note that if you use StateService, the unsubscriptions are added automatically
-        AddUnsubscription(() => EventManager.Unsubscribe("GameEvent", HandleEvent));
+        // InjectClass fills [Inject] fields before this constructor body runs.
+        // Because GeneralClassBase implements IUnsubscriber, StateService
+        // registers the cleanup for you when you pass 'this' as the
+        // subscriber - the subscription is removed on Dispose().
+        _sub = _stateService.AddStateSubscription(
+            s => s.IsEventActive("GameEvent"),
+            OnGameEvent,
+            this);
     }
 
-    private void HandleEvent() { }
+    private void OnGameEvent() { }
 }
 ```
+
+Pass `this` explicitly as the third argument. Without it the service falls
+back to `callback.Target`, which is `null` for a lambda that captures nothing
+- the call then logs an error and returns `null`.
 
 ---
 
@@ -182,43 +199,29 @@ public class ScoreManager : GeneralClassBase
 **Example - Player Controller**:
 
 ```csharp
-public class PlayerController : BehaviourBase
+using CherryFramework.BaseClasses;
+using CherryFramework.DependencyManager;
+using CherryFramework.TickDispatcher;
+using UnityEngine;
+
+public class PlayerController : BehaviourBase, ITickable
 {
-    [Inject] private readonly InputService _input;
-    [Inject] private readonly PlayerModel _model;
+    [Inject] private Ticker _ticker;
 
     [SerializeField] private float _speed = 5f;
-    [SerializeField] private HealthBar _healthBar;
 
     protected override void OnEnable()
     {
         base.OnEnable(); // Triggers injection
 
-        // Bind to model changes
-        Bindings.CreateBinding(
-            _model.HealthAccessor,
-            health => UpdateHealthUI(health)
-        );
-
-        // Register cleanup
-        AddUnsubscription(() => {
-            _input.UnregisterPlayer(this);
-        });
+        _ticker.Register(this);
     }
 
-    private void UpdateHealthUI(float health)
+    // Ticker unregisters BehaviourBase/GeneralClassBase descendants on destroy,
+    // so OnDestroy needs no explicit cleanup call.
+    public void Tick(float deltaTime)
     {
-        _healthBar.SetValue(health);
-
-        if (health <= 0)
-        {
-            Die();
-        }
-    }
-
-    private void Die()
-    {
-        gameObject.SetActive(false);
+        transform.position += transform.forward * (_speed * deltaTime);
     }
 }
 ```

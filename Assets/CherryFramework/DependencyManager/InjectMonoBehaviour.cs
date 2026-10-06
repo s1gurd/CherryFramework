@@ -2,7 +2,7 @@
 
 namespace CherryFramework.DependencyManager
 {
-    public abstract class InjectMonoBehaviour : MonoBehaviour, IInjectTarget
+    public abstract class InjectMonoBehaviour : MonoBehaviour
     {
         protected bool Injected { get; private set; }
 
