@@ -30,6 +30,7 @@ namespace CherryFramework.TickDispatcher
         {
             public LateTickable(ILateTickable obj, float tickPeriod) : base(obj, tickPeriod)
             {
+                LastTick = Time.time;
             }
         }
         
@@ -37,6 +38,7 @@ namespace CherryFramework.TickDispatcher
         {
             public FixedTickable(IFixedTickable obj, float tickPeriod) : base(obj, tickPeriod)
             {
+                LastTick = Time.time;
             }
         }
     }

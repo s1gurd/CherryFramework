@@ -7,6 +7,7 @@
         protected InjectClass()
         {
             DependencyContainer.Instance.InjectDependencies(this);
+            _injected = true;
         }
 
         protected void EnsureDependencies()

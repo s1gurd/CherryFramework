@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -14,15 +15,15 @@ namespace CherryFramework.DataModels
         private bool _debugMode;
         private bool _bindingsOff;
         private bool _ready;
+        private readonly List<Action> _onReadyCallbacks = new(); 
+            
+        private static readonly ConcurrentDictionary<(Type, Type), FillFromCache> _fillFromCache = new();
         
         [JsonIgnore] public string Id { get;  set; } = "";
         [JsonIgnore] public string SlotId { get; set; } = "";
-
         
         protected Dictionary<string, Delegate> Getters = new ();
         protected Dictionary<string, Delegate> Setters = new ();
-        
-        
         
         [JsonIgnore]
         public bool Ready
@@ -30,10 +31,21 @@ namespace CherryFramework.DataModels
             get => _ready;
             set
             {
+                if (_ready && !value)
+                    Debug.LogWarning($"[{GetType().Name}] Setting Ready = FALSE for model which is already ready, which is highly not recommended!");
+                
                 if (_ready && value)
-                    Debug.LogError($"[{GetType().Name}] Tried to set Ready for model which is already ready!");
+                    Debug.LogWarning($"[{GetType().Name}] Tried to set Ready for model which is already ready!");
                 _ready = value; 
                 Send(nameof(Ready), value);
+                if (!_ready || _bindingsOff)
+                    return;
+
+                foreach (var action in _onReadyCallbacks)
+                {
+                    action?.Invoke();
+                }
+                _onReadyCallbacks.Clear();
             }
         }
 
@@ -47,7 +59,7 @@ namespace CherryFramework.DataModels
             ReadyAccessor = new Accessor<bool>(this, nameof(Ready));
         }
 
-        public void AddBinding<T>(string memberName, DownwardBindingHandler handler, bool invokeImmediate)
+        public void AddBinding<T>(string memberName, DownwardBindingHandler handler)
         {
             if (!_handlers.ContainsKey(memberName))
             {
@@ -57,6 +69,19 @@ namespace CherryFramework.DataModels
             {
                 _handlers[memberName].Add(handler);
             }
+
+            // Bindings on the Ready member itself are not registered in _onReadyCallbacks:
+            // the Ready setter's Send already delivers them exactly once when Ready is reached.
+            // Registering them too would invoke the callback twice.
+            if (handler.ActivationMode == BindingActivation.InvokeOnReady && !Ready && memberName != nameof(Ready))
+            {
+                _onReadyCallbacks.Add(() =>
+                {
+                    InvokeBinding<T>(memberName);
+                });
+            }
+            
+            var invokeImmediate = handler.ActivationMode == BindingActivation.InvokeImmediate || (handler.ActivationMode == BindingActivation.InvokeOnReady && Ready);
             
             if (invokeImmediate && Getters.TryGetValue(memberName, out var getter) && getter != null)
             {
@@ -135,26 +160,47 @@ namespace CherryFramework.DataModels
         
         public void FillFrom(object instance)
         {
-            const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-            var insType = instance.GetType();
-            var fromProps = insType.GetProperties(bindingFlags).Where(p => p.CanWrite).ToDictionary(x => x.Name);
-            var fromFields = insType.GetFields(bindingFlags).ToDictionary(x => x.Name);
+            var cache = _fillFromCache.GetOrAdd((instance.GetType(), GetType()), BuildFillFromCache);
             
-            foreach (var thisProp in GetType().GetProperties(bindingFlags).Where(p => p.CanWrite))
+            foreach (var thisProp in cache.ModelProps)
             {
-                if (fromProps.TryGetValue(thisProp.Name, out var fromProp) && thisProp.PropertyType == fromProp.PropertyType)
+                if (cache.FromProps.TryGetValue(thisProp.Name, out var fromProp) && thisProp.PropertyType == fromProp.PropertyType)
                     thisProp.SetValue(this, fromProp.GetValue(instance));
                 
-                if (fromFields.TryGetValue(thisProp.Name, out var fromField) && thisProp.PropertyType == fromField.FieldType)
+                if (cache.FromFields.TryGetValue(thisProp.Name, out var fromField) && thisProp.PropertyType == fromField.FieldType)
                     thisProp.SetValue(this, fromField.GetValue(instance));
+            }
+        }
+        
+        private static FillFromCache BuildFillFromCache((Type Source, Type Model) types)
+        {
+            const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            
+            var fromProps = types.Source.GetProperties(bindingFlags).Where(p => p.CanWrite).ToDictionary(x => x.Name);
+            var fromFields = types.Source.GetFields(bindingFlags).ToDictionary(x => x.Name);
+            var modelProps = types.Model.GetProperties(bindingFlags).Where(p => p.CanWrite).ToList();
+            
+            return new FillFromCache(modelProps, fromProps, fromFields);
+        }
+        
+        private class FillFromCache
+        {
+            public readonly List<PropertyInfo> ModelProps;
+            public readonly Dictionary<string, PropertyInfo> FromProps;
+            public readonly Dictionary<string, FieldInfo> FromFields;
+            
+            public FillFromCache(List<PropertyInfo> modelProps, Dictionary<string, PropertyInfo> fromProps, Dictionary<string, FieldInfo> fromFields)
+            {
+                ModelProps = modelProps;
+                FromProps = fromProps;
+                FromFields = fromFields;
             }
         }
         
         protected void Send<T>(string memberName, T value)
         {
             if (_bindingsOff) return;
-
+            
             if (_debugMode)
             {
                 Debug.Log($"[{GetType().Name}] Send downwards {memberName} = {value?.ToString()}");
@@ -163,6 +209,12 @@ namespace CherryFramework.DataModels
 
             foreach (var handler in handlers)
             {
+                if ((handler.ActivationMode == BindingActivation.ActivateOnReady ||
+                     handler.ActivationMode == BindingActivation.InvokeOnReady) && !Ready)
+                {
+                    continue;
+                }
+                
                 (handler as DownwardBindingHandler<T>)!.DownwardCallback.Invoke(value);
             }
         }

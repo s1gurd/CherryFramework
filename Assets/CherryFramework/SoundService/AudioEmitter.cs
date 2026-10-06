@@ -123,6 +123,11 @@ namespace CherryFramework.SoundService
             {
                 PlayStart(delay, onPlayStart);
             }
+            else
+            {
+                gameObject.SetActive(false);
+            }
+            
             _isWaiting = delay > 0f;
             
             #if UNITY_EDITOR

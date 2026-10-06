@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace CherryFramework.SaveGameManager
         
         private readonly IPlayerPrefs _playerPrefs;
         private readonly Dictionary<IGameSaveData, PersistentObject> _persistentComponents =  new ();
+        private static readonly ConcurrentDictionary<Type, SaveDataCache> _saveDataCache = new();
 
         public string SlotId { get; private set; } = "";
         public IGameSaveData[] RegisteredComponents => _persistentComponents.Keys.ToArray();
@@ -62,6 +64,34 @@ namespace CherryFramework.SaveGameManager
             return true;
         }
 
+        public virtual bool UnRegister<T>(T component) where T : IGameSaveData
+        {
+            if (!_persistentComponents.ContainsKey(component))
+            {
+                Debug.LogError($"[Save Game Manager] Tried to unregister component {component}, which is not registered!");
+                return false;
+            }
+            _persistentComponents.Remove(component);
+            return true;
+        }
+
+        public virtual bool UnRegisterObject(PersistentObject persistentObj)
+        {
+            if (!RegisteredObjects.Contains(persistentObj))
+            {
+                Debug.LogError($"[Save Game Manager] Tried to unregister object {persistentObj}, but there are no registered components!");
+                return false;
+            }
+
+            var result = true;
+            var kvps = _persistentComponents.Where(kvp => kvp.Value == persistentObj).ToArray();
+            foreach (var kvp in kvps)
+            {
+                result &= UnRegister(kvp.Key);
+            }
+            return result;
+        }
+
         public virtual bool LoadData<T>(T component) where T : IGameSaveData
         {
             if (!_persistentComponents.TryGetValue(component, out var persistentObj))
@@ -78,12 +108,9 @@ namespace CherryFramework.SaveGameManager
             
             var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
-            var props = component.GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
-                    p.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any() && p.CanWrite).ToList();
-            var fields = component.GetType()
-                .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(f =>
-                    f.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any()).ToList();
+            var cache = GetSaveDataCache(component.GetType());
+            var props = cache.Props;
+            var fields = cache.Fields;
 
             if (!props.Any() && !fields.Any())
             {
@@ -123,8 +150,7 @@ namespace CherryFramework.SaveGameManager
                 {
                     if (data.Value == null) continue;
                     
-                    var field = fields.FirstOrDefault(f => f.Name == data.Key);
-                    if (field != null)
+                    if (cache.FieldsByName.TryGetValue(data.Key, out var field))
                     {
                         if (!persistentObj.ForceReset)
                         {
@@ -133,8 +159,7 @@ namespace CherryFramework.SaveGameManager
                         continue;
                     }
                     
-                    var prop = props.FirstOrDefault(p => p.Name == data.Key);
-                    if (prop != null)
+                    if (cache.PropsByName.TryGetValue(data.Key, out var prop))
                     {
                         if (!persistentObj.ForceReset)
                         {
@@ -148,6 +173,20 @@ namespace CherryFramework.SaveGameManager
             return true;
         }
 
+        public virtual void SaveDataForObject(PersistentObject persistentObj)
+        {
+            if (!RegisteredObjects.Contains(persistentObj))
+            {
+                Debug.LogError($"[Save Game Manager] Tried to save data for object {persistentObj}, but there are no registered components!");
+                return;
+            }
+
+            foreach (var component in _persistentComponents.Where(kvp => kvp.Value == persistentObj))
+            {
+                SaveData(component.Key);
+            }
+        } 
+
         public virtual void SaveData<T>(T component) where T : IGameSaveData
         {
             if (!_persistentComponents.TryGetValue(component, out var persistentObj))
@@ -158,19 +197,16 @@ namespace CherryFramework.SaveGameManager
             
             component.OnBeforeSave();
             
-            var props = typeof(T)
-                .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(p =>
-                    p.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any() && p.CanWrite).ToList();
-            var fields = typeof(T)
-                .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(f =>
-                    f.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any()).ToList();
+            var cache = GetSaveDataCache(component.GetType());
+            var props = cache.Props;
+            var fields = cache.Fields;
 
             if (!props.Any() && !fields.Any())
             {
                 Debug.LogError($"[Save Game Manager] No data found to save in component {component}");
                 return;
             }
-
+            
             var id = _persistentComponents[component].GetObjectId();
             var key = DataUtils.CreateKey(id, SlotId, component.GetType().ToString());
             
@@ -255,6 +291,35 @@ namespace CherryFramework.SaveGameManager
         public void SetCurrentSlot(string slotId)
         {
             SlotId = slotId;
+        }
+        
+        private static SaveDataCache GetSaveDataCache(Type type)
+        {
+            return _saveDataCache.GetOrAdd(type, static t =>
+            {
+                const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+                var props = t.GetProperties(bindingFlags).Where(p =>
+                    p.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any() && p.CanWrite).ToList();
+                var fields = t.GetFields(bindingFlags).Where(f =>
+                    f.GetCustomAttributes(typeof(SaveGameDataAttribute), false).Any()).ToList();
+                return new SaveDataCache(props, fields);
+            });
+        }
+        
+        private class SaveDataCache
+        {
+            public readonly List<PropertyInfo> Props;
+            public readonly List<FieldInfo> Fields;
+            public readonly Dictionary<string, FieldInfo> FieldsByName;
+            public readonly Dictionary<string, PropertyInfo> PropsByName;
+            
+            public SaveDataCache(List<PropertyInfo> props, List<FieldInfo> fields)
+            {
+                Props = props;
+                Fields = fields;
+                FieldsByName = fields.ToDictionary(f => f.Name);
+                PropsByName = props.ToDictionary(p => p.Name);
+            }
         }
     }
 }

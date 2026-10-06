@@ -68,8 +68,18 @@ namespace CherryFramework.StateService
                 for (var index = kvp.Value.Count - 1; index >= 0; index--)
                 {
                     var subscription = kvp.Value[index];
-                    if (!subscription.Condition.Invoke(_stateAccessor)) continue;
-                    subscription.Callback.Invoke();
+                    try
+                    {
+                        if (!subscription.Condition.Invoke(_stateAccessor)) continue;
+                        subscription.Callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError(
+                            $"[State Service] Exception in subscription for subscriber: {kvp.Key} (index {index}), skipping it:\n{e}");
+                        continue;
+                    }
+                    
                     counter++;
                     if (subscription.DestroyAfterInvoke) kvp.Value.RemoveAt(index);
                 }

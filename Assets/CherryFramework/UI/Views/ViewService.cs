@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using CherryFramework.BaseClasses;
+using CherryFramework.DataModels;
 using CherryFramework.DependencyManager;
 using CherryFramework.UI.InteractiveElements.Presenters;
 using CherryFramework.Utils;
@@ -52,24 +53,24 @@ namespace CherryFramework.UI.Views
         }
 
         public Sequence PopView<T>(PresenterBase mountingPoint = null,
-            bool skipAnimation = false) where T : PresenterBase
+            bool skipAnimation = false, Accessor<bool> readyAccessor = null) where T : PresenterBase
         {
-            return PopView<T>(out _, mountingPoint, skipAnimation);
+            return PopView<T>(out _, mountingPoint, skipAnimation, readyAccessor);
         }
 
-        public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bool skipAnimation = false) where T : PresenterBase
+        public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null) where T : PresenterBase
         {
-            var seq = PopView(typeof(T), out var result, mountingPoint, skipAnimation);
+            var seq = PopView(typeof(T), out var result, mountingPoint, skipAnimation, readyAccessor);
             newView = result as T;
             return seq;
         }
 
-        public Sequence PopView(string typeString, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public Sequence PopView(string typeString, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
         {
-            return PopView(typeString, out _, mountingPoint, skipAnimation);
+            return PopView(typeString, out _, mountingPoint, skipAnimation, readyAccessor);
         }
         
-        public Sequence PopView(string typeString, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public Sequence PopView(string typeString, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
         {
             newView = null;
             var type = ViewUtils.GetPresenterType(typeString);
@@ -79,15 +80,15 @@ namespace CherryFramework.UI.Views
                 return DOTween.Sequence();;
             }
 
-            return PopView(type, out newView, mountingPoint, skipAnimation);
+            return PopView(type, out newView, mountingPoint, skipAnimation, readyAccessor);
         }
 
-        public Sequence PopView(Type type, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public Sequence PopView(Type type, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
         {
-            return PopView(type, out _, mountingPoint, skipAnimation);
+            return PopView(type, out _, mountingPoint, skipAnimation, readyAccessor);
         }
         
-        public Sequence PopView(Type type, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public Sequence PopView(Type type, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
         {
             newView = null;
             
@@ -107,12 +108,35 @@ namespace CherryFramework.UI.Views
             return PopView(newViewSource, out newView, mountingPoint, skipAnimation);
         }
 
-        public virtual Sequence PopView(PresenterBase view, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public virtual Sequence PopView(PresenterBase view, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
         {
-            return PopView(view, out _, mountingPoint, skipAnimation);
+            return PopView(view, out _, mountingPoint, skipAnimation, readyAccessor);
         }
         
-        public virtual Sequence PopView(PresenterBase view, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
+        public virtual Sequence PopView(PresenterBase view, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
+        {
+            var seq= PopViewImpl(view, out newView, mountingPoint, skipAnimation);
+            
+            if (readyAccessor != null)
+            {
+                PopLoadingView();
+                
+                seq.Pause();
+
+                Bindings.CreateBinding(readyAccessor, r =>
+                {
+                    if (r)
+                    {
+                        seq.Play();
+                    }
+                });
+            }
+            
+            return seq;
+        }
+
+        private Sequence PopViewImpl(PresenterBase view, out PresenterBase newView, PresenterBase mountingPoint,
+            bool skipAnimation)
         {
             if (_history.TryPeek(out var current))
             {
@@ -150,6 +174,7 @@ namespace CherryFramework.UI.Views
                 parentPresenter.ChildPresenters[index] = newView;
                 
                 newView.InitializePresenter();
+                newView.gameObject.SetActive(true);
             }
 
             var newPath = new List<PresenterBase>();
@@ -174,8 +199,11 @@ namespace CherryFramework.UI.Views
             if (newView.ChildrenContainer != null && newView.ChildPresenters.Count > 0)
             {
                 var viewToPop = newView.currentChild != null ? newView.currentChild : newView.ChildPresenters.First();
-                seq.Insert(0,PopView(viewToPop, out var newChild, newView, skipAnimation));
-                historyItem.Add(newChild);
+                seq.Insert(0, PopView(viewToPop, out var newChild, newView, skipAnimation));
+                if (newChild != null)
+                {
+                    historyItem.Add(newChild);
+                }
             }
             else
             {
@@ -200,6 +228,12 @@ namespace CherryFramework.UI.Views
 
         public void ClearHistory()
         {
+            if (_history.Count == 0)
+            {
+                DebugHistory("History is empty");
+                return;
+            }
+            
             var current = _history.Pop();
             //foreach (var item in _history)
             //{
@@ -218,7 +252,7 @@ namespace CherryFramework.UI.Views
                 return DOTween.Sequence();
             }
                 
-            if (_history.TryPeek(out var c) && c.Last() is IModal)
+            if (_history.TryPeek(out var c) && (c.Last() is IModal || c.Last().Modal))
             {
                 DebugHistory("Blocked by modal view");
                 return DOTween.Sequence();

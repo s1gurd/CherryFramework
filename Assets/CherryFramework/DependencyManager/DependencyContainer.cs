@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -18,6 +19,8 @@ namespace CherryFramework.DependencyManager
         }
 
         private readonly Dictionary<Type, Dependency> _dependencies = new ();
+        private readonly HashSet<object> _disposedInstances = new();
+        private static readonly ConcurrentDictionary<Type, InjectCache> _injectCache = new();
 
         public void BindAsSingleton<TService>(TService instance) 
             where TService : class
@@ -48,7 +51,7 @@ namespace CherryFramework.DependencyManager
 
             var dep = new Dependency
             {
-                BindedInstance = instance,
+                BindInstance = instance,
                 BindType = BindingType.Singleton
             };
             
@@ -114,7 +117,7 @@ namespace CherryFramework.DependencyManager
 
             var dep = new Dependency
             {
-                BindedInstance = instance,
+                BindInstance = instance,
                 BindType = BindingType.Singleton
             };
             
@@ -126,32 +129,14 @@ namespace CherryFramework.DependencyManager
 
         public T InjectDependencies<T>(T target)
         {
-            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            var cache = _injectCache.GetOrAdd(target.GetType(), BuildInjectCache);
             
-            var fields = new List<FieldInfo>();
-            var currentType = target.GetType();
-            while (currentType != null)
-            {
-                fields.AddRange( currentType.GetFields(flags)
-                    .Where(f => f.GetCustomAttributes(typeof(InjectAttribute)).Any()).ToList());
-                currentType = currentType.BaseType;
-            }
-            
-            var props = new List<PropertyInfo>();
-            currentType = target.GetType();
-            while (currentType != null)
-            {
-                props.AddRange( currentType.GetProperties(flags)
-                    .Where(p => p.GetCustomAttributes(typeof(InjectAttribute)).Any() && p.CanWrite).ToList());
-                currentType = currentType.BaseType;
-            }
-
-            foreach (var field in fields)
+            foreach (var field in cache.Fields)
             {
                 InjectFieldValue(field);
             }
 
-            foreach (var prop in props)
+            foreach (var prop in cache.Props)
             {
                 InjectPropValue(prop);
             }
@@ -165,8 +150,8 @@ namespace CherryFramework.DependencyManager
                     switch (dep.BindType)
                     {
                         case BindingType.Singleton:
-                            dep.BindedInstance ??= dep.Factory();
-                            field.SetValue(target, dep.BindedInstance);
+                            dep.BindInstance ??= dep.Factory();
+                            field.SetValue(target, dep.BindInstance);
                             break;
                         case BindingType.Transient:
                             field.SetValue(target, dep.Factory());
@@ -188,8 +173,8 @@ namespace CherryFramework.DependencyManager
                     switch (dep.BindType)
                     {
                         case BindingType.Singleton:
-                            dep.BindedInstance ??= dep.Factory();
-                            prop.SetValue(target, dep.BindedInstance);
+                            dep.BindInstance ??= dep.Factory();
+                            prop.SetValue(target, dep.BindInstance);
                             break;
                         case BindingType.Transient:
                             prop.SetValue(target, dep.Factory());
@@ -204,14 +189,42 @@ namespace CherryFramework.DependencyManager
                 }
             }
         }
+        
+        private InjectCache BuildInjectCache(Type type)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            
+            var fields = new List<FieldInfo>();
+            var currentType = type;
+            while (currentType != null)
+            {
+                fields.AddRange( currentType.GetFields(flags)
+                    .Where(f => f.GetCustomAttributes(typeof(InjectAttribute)).Any()).ToList());
+                currentType = currentType.BaseType;
+            }
+            
+            var props = new List<PropertyInfo>();
+            currentType = type;
+            while (currentType != null)
+            {
+                props.AddRange( currentType.GetProperties(flags)
+                    .Where(p => p.GetCustomAttributes(typeof(InjectAttribute)).Any() && p.CanWrite).ToList());
+                currentType = currentType.BaseType;
+            }
+            
+            return new InjectCache(fields, props);
+        }
 
         public void RemoveDependency(Type type)
         {
-            var dep = _dependencies[type];
-            if (dep.BindedInstance is IDisposable disposable)
-                disposable.Dispose();
+            if (!_dependencies.TryGetValue(type, out var dep))
+            {
+                Debug.LogError($"[Dependency Container] Tried to remove dependency of type {type} which is not registered in the container!");
+                return;
+            }
             
             _dependencies.Remove(type);
+            DisposeInstance(dep.BindInstance);
         }
         
         public bool HasDependency<T>() => HasDependency(typeof(T));
@@ -225,15 +238,27 @@ namespace CherryFramework.DependencyManager
         {
             if (_dependencies.TryGetValue(typeof(T), out var dep))
             {
-                return (T)dep.BindedInstance;
+                return (T)dep.BindInstance;
             }
             Debug.LogError($"[Dependency Container] Tried to get dependency of type {typeof(T)} which is not registered in the container!");
             return default;
         }
         
+        private class InjectCache
+        {
+            public readonly List<FieldInfo> Fields;
+            public readonly List<PropertyInfo> Props;
+            
+            public InjectCache(List<FieldInfo> fields, List<PropertyInfo> props)
+            {
+                Fields = fields;
+                Props = props;
+            }
+        }
+        
         private class Dependency
         {
-            public object BindedInstance;
+            public object BindInstance;
             public Func<object> Factory;
             public BindingType BindType;
         }
@@ -242,10 +267,15 @@ namespace CherryFramework.DependencyManager
         {
             foreach (var dep in _dependencies.Values)
             {
-                if (dep.BindedInstance is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
+                DisposeInstance(dep.BindInstance);
+            }
+        }
+        
+        private void DisposeInstance(object instance)
+        {
+            if (instance is IDisposable disposable && _disposedInstances.Add(instance))
+            {
+                disposable.Dispose();
             }
         }
     }

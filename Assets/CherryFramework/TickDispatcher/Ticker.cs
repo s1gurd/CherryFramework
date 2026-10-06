@@ -42,7 +42,7 @@ namespace CherryFramework.TickDispatcher
                 var obj = _tickables[i];
                 
                 if (_checkActivity.ContainsKey(obj) && !_checkActivity[obj].isActiveAndEnabled)
-                    return;
+                    continue;
                 
                 if (emitTime < obj.LastTick + obj.TickPeriod) 
                     continue;
@@ -69,7 +69,7 @@ namespace CherryFramework.TickDispatcher
                 var obj = _lateTickables[i];
                 
                 if (_checkActivity.ContainsKey(obj) && !_checkActivity[obj].isActiveAndEnabled)
-                    return;
+                    continue;
                 
                 if (emitTime < obj.LastTick + obj.TickPeriod) 
                     continue;
@@ -96,7 +96,7 @@ namespace CherryFramework.TickDispatcher
                 var obj = _fixedTickables[i];
                 
                 if (_checkActivity.ContainsKey(obj) && !_checkActivity[obj].isActiveAndEnabled)
-                    return;
+                    continue;
                 
                 if (emitTime < obj.LastTick + obj.TickPeriod) 
                     continue;
@@ -150,18 +150,11 @@ namespace CherryFramework.TickDispatcher
 
         public void Register(ITickableBase obj, float tickPeriod = 0f)
         {
-            switch (obj)
-            {
-                case ITickable t:
-                    AddTick(t, tickPeriod);
-                    break;
-                case ILateTickable l:
-                    AddLateTick(l, tickPeriod);
-                    break;
-                case IFixedTickable f:
-                    AddFixedTick(f, tickPeriod);
-                    break;
-            }
+            if (obj is ITickable t)
+                AddTick(t, tickPeriod);
+            if (obj is ILateTickable l)
+                AddLateTick(l, tickPeriod);
+            if (obj is IFixedTickable f) AddFixedTick(f, tickPeriod);
         }
 
         public void Register<T>(T obj, bool checkActivity, float tickPeriod = 0f) where T : MonoBehaviour, ITickableBase

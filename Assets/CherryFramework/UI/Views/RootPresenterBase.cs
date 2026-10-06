@@ -15,11 +15,11 @@ namespace CherryFramework.UI.Views
         {
             base.OnEnable();
             
-            if (loadingScreen != null)
+            if (loadingScreen != null && !childPresenters.Contains(loadingScreen))
             {
                 childPresenters.Add(loadingScreen);
             }
-            if (errorScreen != null)
+            if (errorScreen != null && !childPresenters.Contains(errorScreen))
             {
                 childPresenters.Add(errorScreen);
             }

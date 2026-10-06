@@ -31,8 +31,9 @@ namespace Sample
             // then you have to bind class B before class A 
             BindAsSingleton<Ticker>();
             BindAsSingleton(new StateService(false));
-            BindAsSingleton(new SaveGameManager(new PlayerPrefsData(), false));
-            BindAsSingleton(new ModelService(new PlayerPrefsBridge<PlayerPrefsData>(), false));
+            var playerPrefs = new PlayerPrefsData();
+            BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), false));
+            BindAsSingleton(new SaveGameManager(playerPrefs, false));
             BindAsSingleton(new SoundService(globalAudioSettings, audioEvents));
             BindAsSingleton(new ViewService(uiRoot, false));
             BindAsSingleton(new InputSystem_Actions());

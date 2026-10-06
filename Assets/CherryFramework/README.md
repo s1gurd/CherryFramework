@@ -23,9 +23,9 @@ The framework is designed to be **modular** - use what you need, ignore what you
 
 1. Download project and open in Unity (built in Unity 6, but any version past 2020 should be fine)
 
-2. Take a look at demo project in [Assets/Sample](Assets/Sample) folder. Game scene is located in `Assets/Sample/Scenes/dinoscene.unity`Try to launch it several times to see how save system is working
+2. Take a look at demo project in [Sample](Sample) folder. Game scene is located in `Assets/CherryFramework/Sample/Scenes/dinoscene.unity`. Try to launch it several times to see how save system is working
 
-3. Read the Readme.md for Sample Game
+3. Read the [Readme.md for Sample Game](Sample/README.md)
 
 4. Read the following docs (if needed)
 
@@ -477,7 +477,7 @@ public class MyComponent : BehaviourBase
 ### 1. Installation
 
 1. Copy CherryFramework into your Unity project's `Assets` folder
-2. Ensure [dependencies](#Dependencies): DOTween, Newtonsoft.Json, etc, see Dependencies Section
+2. Ensure [dependencies](#dependencies-included-in-project): DOTween, Newtonsoft.Json, etc, see Dependencies Section
 3. Add framework namespaces to your assembly definition files
 
 ### 2. Initial Setup
@@ -563,6 +563,6 @@ public class Player : BehaviourBase, IGameSaveData
 - JSON - com.unity.nuget.newtonsoft-json
 - Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
 - UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
-- Editor Decoration - https://github.com/v0lt13/EditorAttributes.git
+- Editor Decoration - https://github.com/v0lt13/EditorAttributes
 
 If you want to integrate save game data to Steam or other cloud services, I advise to use https://github.com/richardelms/FileBasedPlayerPrefs - a direct replacement to Unity's PlayerpRefs, that stores user data in an ordinary JSON files

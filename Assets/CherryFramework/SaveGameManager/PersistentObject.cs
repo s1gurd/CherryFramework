@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using CherryFramework.BaseClasses;
 using CherryFramework.DataModels;
@@ -25,6 +26,7 @@ namespace CherryFramework.SaveGameManager
         [ReadOnly] public string guid = null;
         
         [SerializeField] private bool saveTransform;
+        [SerializeField] private bool saveOnDestroy;
 
         [Header("DANGER ZONE")]
         [SerializeField] private bool forceReset;
@@ -45,8 +47,23 @@ namespace CherryFramework.SaveGameManager
             {
                 _saveGame.Register(this);
                 _saveGame.LoadData(this);
-                
             }
+        }
+
+        protected override void OnDestroy()
+        {
+            
+            if (_saveGame.RegisteredObjects.Any(c => c.Equals(this)))
+            {
+                if (saveOnDestroy)
+                {
+                    _saveGame.SaveDataForObject(this);
+                }
+
+                _saveGame.UnRegisterObject(this);
+            }
+            
+            base.OnDestroy();
         }
 
         public string GetObjectId()
@@ -155,17 +172,17 @@ namespace CherryFramework.SaveGameManager
         private bool SceneNotInSettings => !gameObject.scene.IsValid();
 
 #if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (gameObject.scene.IsValid())
-            {
-                FillGuid();
-            }
-            else
-            {
-                guid = null;
-            }
-        }
+        // private void OnValidate()
+        // {
+        //     if (gameObject.scene.IsValid())
+        //     {
+        //         FillGuid();
+        //     }
+        //     else
+        //     {
+        //         guid = null;
+        //     }
+        // }
         
         [Button(nameof(ShowButton), ConditionResult.ShowHide)]
         private void FillGuid()
@@ -192,7 +209,7 @@ namespace CherryFramework.SaveGameManager
             serializedObject.ApplyModifiedProperties();
         }
 
-        private bool ShowButton => !spawnableObject && !SceneNotInSettings && string.IsNullOrEmpty(guid);
+        private bool ShowButton => !spawnableObject && !SceneNotInSettings;
 #endif
     }
 }

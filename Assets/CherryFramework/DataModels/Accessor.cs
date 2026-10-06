@@ -18,11 +18,11 @@ namespace CherryFramework.DataModels
         }
 
         [Pure]
-        public DownwardBindingHandler BindDownwards(Action<T> callback, bool invokeImmediate = true)
+        public DownwardBindingHandler BindDownwards(Action<T> callback, BindingActivation activationMode = BindingActivation.InvokeImmediate)
         {
-           var handler = new DownwardBindingHandler<T>(_model, callback);
+           var handler = new DownwardBindingHandler<T>(_model, callback, activationMode);
            
-            _model.AddBinding<T>(_memberName, handler, invokeImmediate);
+            _model.AddBinding<T>(_memberName, handler);
             return handler;
         }
 

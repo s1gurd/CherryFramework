@@ -1,13 +1,19 @@
-﻿using CherryFramework.Utils;
+﻿using System;
+using CherryFramework.Utils;
 using CherryFramework.Utils.PlayerPrefsWrapper;
 using Newtonsoft.Json;
 using UnityEngine;
 
 namespace CherryFramework.DataModels.ModelDataStorageBridges
 {
-	public class PlayerPrefsBridge<T> : ModelDataStorageBridgeBase where T : IPlayerPrefs, new()
+	public class PlayerPrefsBridge : ModelDataStorageBridgeBase
     {
-	    private readonly IPlayerPrefs _playerPrefs = new T();
+	    private readonly IPlayerPrefs _playerPrefs;
+	    
+	    public PlayerPrefsBridge(IPlayerPrefs playerPrefs)
+	    {
+		    _playerPrefs = playerPrefs;
+	    }
 	    
         public override bool ModelExistsInStorage(DataModelBase model)
         {
@@ -25,7 +31,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 	        return _playerPrefs.HasKey(key);
         }
 
-        public override bool LoadModelData(DataModelBase model, bool makeReady = true)
+        public override bool LoadModelData(DataModelBase model, ReadyMode makeReady = ReadyMode.MakeReadyAnyway)
 		{
 			if (!base.LoadModelData(model, makeReady))
 				return false;
@@ -48,9 +54,21 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
 				if (DebugMessages) 
 					Debug.Log($"[Model Service - PlayerPrefs] NOT FOUND model by key: {key} in PlayerPrefs");
 			}
-			
-			if (makeReady)
-				model.Ready = true;
+
+			switch (makeReady)
+			{
+				case ReadyMode.MakeReadyAnyway:
+					model.Ready = true;
+					break;
+				case ReadyMode.MakeReadyWhenDataFound:
+					if (result)
+						model.Ready = true;
+					break;
+				case ReadyMode.DoNotMakeReady:
+					break;
+				default:
+					throw new ArgumentOutOfRangeException(nameof(makeReady), makeReady, null);
+			}
 			
 			return result;
 		}

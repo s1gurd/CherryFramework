@@ -5,10 +5,12 @@ namespace CherryFramework.DataModels
     public class DownwardBindingHandler
     {
         public readonly DataModelBase Model;
+        public readonly BindingActivation ActivationMode;
 
-        protected DownwardBindingHandler(DataModelBase model)
+        protected DownwardBindingHandler(DataModelBase model, BindingActivation activationMode)
         {
             Model = model;
+            ActivationMode = activationMode;
         }
     }
 
@@ -16,7 +18,7 @@ namespace CherryFramework.DataModels
     {
         public Action<T> DownwardCallback { get; }
         
-        public DownwardBindingHandler(DataModelBase model, Action<T> callback) : base(model)
+        public DownwardBindingHandler(DataModelBase model, Action<T> callback, BindingActivation activationMode) : base(model, activationMode)
         {
             DownwardCallback = callback;
         }

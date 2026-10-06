@@ -43,7 +43,7 @@ namespace CherryFramework.DataModels.ModelDataStorageBridges
             return true;
         }
 
-        public virtual bool LoadModelData(DataModelBase model, bool makeReady = true)
+        public virtual bool LoadModelData(DataModelBase model, ReadyMode makeReady = ReadyMode.MakeReadyAnyway)
         {
             if (!DataLinkedModels.Contains(model))
             {

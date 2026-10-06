@@ -7,9 +7,9 @@ namespace CherryFramework.DataModels
     {
         private readonly List<DownwardBindingHandler> _downwardHandlers = new();
         
-        public DownwardBindingHandler CreateBinding<T>(Accessor<T> accessor, Action<T> callback, bool invokeImmediate = true)
+        public DownwardBindingHandler CreateBinding<T>(Accessor<T> accessor, Action<T> callback, BindingActivation activationMode = BindingActivation.InvokeImmediate)
         {
-            var handler = accessor.BindDownwards(callback, invokeImmediate);
+            var handler = accessor.BindDownwards(callback, activationMode);
             _downwardHandlers.Add(handler);
             return handler;
         }

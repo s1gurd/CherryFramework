@@ -49,7 +49,7 @@ namespace CherryFramework.UI.InteractiveElements.Populators
                     active.Remove(cell);
                     Object.Destroy(cell.gameObject);
                 },
-                collectionCheck: false,
+                collectionCheck: true,
                 defaultCapacity: 10,
                 maxSize: 100
             );
