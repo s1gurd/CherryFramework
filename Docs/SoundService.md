@@ -374,8 +374,29 @@ public class AudioEmitter : BehaviourBase, ITickable
     public void Stop(float delay = 0f);
     public void Pause(float delay = 0f);
     public void Resume(float delay = 0f);
+
+    // On-stop callback management (onPlayEnd is stored and invoked when the sound ends)
+    public void AppendOnStopCallback(Action callback);
+    public void RemoveOnStopCallback(Action callback);
+    public void ClearOnStopCallback();
 }
 ```
+
+### Deactivation Behaviour
+
+`AudioEmitter` objects are pooled, so the emitter takes care of its own
+dormant state:
+
+- When the sound **finishes naturally** (the `AudioSource` is no longer
+  playing, nothing is waiting, and the event does **not** set
+  `doNotDeactivateOnStop`), the emitter invokes its on-stop callback and
+  deactivates its own GameObject - it then sits inactive in the pool until
+  the next `PlayEvent` reactivates it.
+- If the event's `doNotDeactivateOnStop` is set, the emitter **stays active**
+  after stopping (useful for emitters that must keep playing again, e.g.
+  ambient or looping sources).
+- If the emitter's GameObject is **not active in the hierarchy** when an
+  event is started, the play is aborted and the emitter is deactivated.
 
 ### Key Methods
 

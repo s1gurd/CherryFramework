@@ -245,6 +245,43 @@ if (DependencyContainer.Instance.HasDependency<ILogger>())
 DependencyContainer.Instance.RemoveDependency(typeof(ILogger));
 ```
 
+#### RemoveDependency
+
+```csharp
+public void RemoveDependency(Type type)
+```
+
+Removes a binding from the container. Behaviour:
+
+- If the type is **not registered**, an error is logged and the method simply
+  returns (it does **not** throw).
+- If the bound instance implements `IDisposable`, it is disposed - and at most
+  once, even if both `RemoveDependency` and `Dispose` are called for it
+  (the container keeps a set of already-disposed instances).
+
+#### Dispose
+
+```csharp
+public void Dispose()
+```
+
+Disposes every registered singleton instance that implements `IDisposable`
+(each at most once). Use it when tearing down the whole container (e.g. at
+application quit).
+
+#### GetInstance
+
+```csharp
+internal T GetInstance<T>()
+```
+
+Internal accessor used by the framework. Returns the singleton instance, or
+logs an error and returns `default` if the type is not registered.
+
+**Note**: injection caches its reflection results per type
+(a `ConcurrentDictionary` of `InjectCache`), so repeated injection of the same
+type is cheap after the first call.
+
 ---
 
 ## Binding Types

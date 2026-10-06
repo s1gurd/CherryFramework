@@ -23,9 +23,9 @@ The framework is designed to be **modular** - use what you need, ignore what you
 
 1. Download project and open in Unity (built in Unity 6, but any version past 2020 should be fine)
 
-2. Take a look at demo project in [Assets/Sample](Assets/Sample) folder. Game scene is located in `Assets/Sample/Scenes/dinoscene.unity`Try to launch it several times to see how save system is working
+2. Take a look at the demo project in the [Assets/Sample](Assets/Sample) folder. The game scene is located in `Assets/Sample/Scenes/dinoscene.unity`. Try to launch it several times to see how the save system is working
 
-3. Read the Readme.md for Sample Game
+3. Read the [README.md for the Sample Game](Assets/Sample/README.md)
 
 4. Read the following docs (if needed)
 
@@ -492,8 +492,9 @@ public class ProjectInstaller : InstallerBehaviourBase
 
     protected override void Install()
     {
-        // Core services
-        BindAsSingleton(new SaveGameManager(new PlayerPrefsData(), true));
+        // Core services (one shared IPlayerPrefs instance for all persistent data)
+        var playerPrefs = new PlayerPrefsData();
+        BindAsSingleton(new SaveGameManager(playerPrefs, true));
         BindAsSingleton(new StateService(true));
         BindAsSingleton(new Ticker());
 
@@ -504,7 +505,7 @@ public class ProjectInstaller : InstallerBehaviourBase
         BindAsSingleton(new SoundService(_audioSettings, _audioCollections));
 
         // Models
-        var modelService = new ModelService(new PlayerPrefsBridge<PlayerPrefsData>(), true);
+        var modelService = new ModelService(new PlayerPrefsBridge(playerPrefs), true);
         BindAsSingleton(modelService);
     }
 }

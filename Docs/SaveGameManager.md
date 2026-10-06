@@ -32,6 +32,7 @@ The CherryFramework SaveGameManager provides a comprehensive save game system th
 - **Callback System**: Pre/post save/load lifecycle hooks
 - **PlayerPrefs Integration**: Built-in storage using Unity PlayerPrefs
 - **Extensible Storage**: Implement custom storage with `IPlayerPrefs` interface
+- **Automatic Cleanup on Destroy**: `PersistentObject` can optionally save its data and unregister automatically when destroyed
 
 ### Important Requirements
 
@@ -128,10 +129,13 @@ public class SaveGameManager
 
     // Registration
     public virtual bool Register<T>(T component, PersistentObject persistentObj = null) where T : IGameSaveData;
+    public virtual bool UnRegister<T>(T component) where T : IGameSaveData;
+    public virtual bool UnRegisterObject(PersistentObject persistentObj);
 
     // Data Operations (Synchronous)
     public virtual bool LoadData<T>(T component) where T : IGameSaveData;
     public virtual void SaveData<T>(T component) where T : IGameSaveData;
+    public virtual void SaveDataForObject(PersistentObject persistentObj);
     public void SaveAllData();
     public virtual bool DeleteData<T>(T component) where T : IGameSaveData;
 
@@ -174,6 +178,33 @@ public class PlayerHealth : BehaviourBase, IGameSaveData
         _saveManager.Register(this); // Auto-finds PersistentObject on same GameObject
     }
 }
+```
+
+### Unregistration
+
+#### UnRegister
+
+```csharp
+public virtual bool UnRegister<T>(T component) where T : IGameSaveData
+```
+
+Removes a single component from the registry. Logs an error and returns `false`
+if the component was not registered.
+
+#### UnRegisterObject
+
+```csharp
+public virtual bool UnRegisterObject(PersistentObject persistentObj)
+```
+
+Removes **all** components registered against a given `PersistentObject`.
+Useful when an entire object is going away (e.g. it was despawned or the
+scene was unloaded). `PersistentObject.OnDestroy` calls this automatically
+(see [Automatic Cleanup on Destroy](#automatic-cleanup-on-destroy)).
+
+```csharp
+// Unregister every component that belongs to this object
+_saveManager.UnRegisterObject(myPersistentObject);
 ```
 
 ### Data Operations
@@ -230,6 +261,21 @@ private void OnApplicationQuit()
     _saveManager.SaveAllData();
     PlayerPrefs.Save();
 }
+```
+
+#### SaveDataForObject
+
+```csharp
+public virtual void SaveDataForObject(PersistentObject persistentObj)
+```
+
+Saves the data of **all** components registered against a given
+`PersistentObject`. Logs an error if the object has no registered components.
+`PersistentObject` uses this in `OnDestroy` when `saveOnDestroy` is enabled.
+
+```csharp
+// Persist everything owned by this object (e.g. before despawning it)
+_saveManager.SaveDataForObject(myPersistentObject);
 ```
 
 #### DeleteData
@@ -352,6 +398,7 @@ public class PersistentObject : BehaviourBase, IGameSaveData
     [SerializeField] private string customId = "OBJ";
     [ReadOnly] public string guid;
     [SerializeField] private bool saveTransform;
+    [SerializeField] private bool saveOnDestroy;
     [SerializeField] private bool forceReset;
 
     // Properties
@@ -375,6 +422,7 @@ public class PersistentObject : BehaviourBase, IGameSaveData
 | `customId`        | `string` | Base identifier for spawnable objects (ignored for scene objects)        |
 | `guid`            | `string` | Auto-generated GUID for scene objects (read-only, ignored for spawnable) |
 | `saveTransform`   | `bool`   | Whether to automatically save position, rotation, and scale              |
+| `saveOnDestroy`   | `bool`   | If true, save all of this object's data automatically in `OnDestroy`    |
 | `forceReset`      | `bool`   | If true, ignore saved data and use defaults when loading                 |
 
 ### Transform Saving
@@ -391,6 +439,30 @@ When `saveTransform` is enabled, the PersistentObject automatically saves:
 [SaveGameData] private Quaternion _rotation;
 [SaveGameData] private Vector3 _scale;
 ```
+
+When `saveTransform` is enabled, `PersistentObject` also registers itself and
+loads its transform data automatically in `Start`, so no manual
+`Register`/`LoadData` calls are needed for transform persistence.
+
+### Automatic Cleanup on Destroy
+
+In `OnDestroy`, `PersistentObject` checks whether it is still registered with
+the `SaveGameManager`:
+
+1. If `saveOnDestroy` is enabled, it saves all of the object's data via
+   `SaveDataForObject(this)` - the last state is persisted before the object
+   goes away.
+2. It then always unregisters the object via `UnRegisterObject(this)`, so the
+   registry never holds references to destroyed objects.
+
+```csharp
+// In the inspector, on a PersistentObject:
+saveTransform = true;   // auto register + load in Start
+saveOnDestroy = true;   // save everything on destroy, then unregister
+```
+
+This is the recommended setup for scene objects that should keep their state
+across scene transitions.
 
 ### Object Identification System
 
@@ -928,7 +1000,7 @@ public void OnAfterLoad()
 public class PlayerModel : DataModelBase, IGameSaveData { }
 
 // RIGHT - Use ModelService
-var bridge = new PlayerPrefsBridge<PlayerPrefsData>();
+var bridge = new PlayerPrefsBridge(new PlayerPrefsData());
 var modelService = new ModelService(bridge, true);
 var playerModel = modelService.GetOrCreateSingletonModel<PlayerModel>();
 bridge.RegisterModelInStorage(playerModel);
@@ -1601,16 +1673,18 @@ public class AutoSaveManager : BehaviourBase
 
 ### Method Summary
 
-| Category         | Method                   | Description                          |
-| ---------------- | ------------------------ | ------------------------------------ |
-| **Registration** | `Register(component)`    | Register a component for saving      |
-| **Loading**      | `LoadData(component)`    | Load data for a component            |
-|                  | `SaveAllData()`          | Load data for all components         |
-| **Saving**       | `SaveData(component)`    | Save a single component              |
-|                  | `SaveAllData()`          | Save all components (synchronous)    |
-| **Async Saving** | *Implement yourself*     | Use Task.Run or coroutines for async |
-| **Deletion**     | `DeleteData(component)`  | Delete saved data for a component    |
-| **Slot**         | `SetCurrentSlot(slotId)` | Change current save slot             |
+| Category         | Method                              | Description                                          |
+| ---------------- | ----------------------------------- | ---------------------------------------------------- |
+| **Registration** | `Register(component)`               | Register a component for saving                      |
+|                  | `UnRegister(component)`             | Unregister a single component                        |
+|                  | `UnRegisterObject(persistentObj)`   | Unregister all components of an object               |
+| **Loading**      | `LoadData(component)`               | Load data for a component                            |
+| **Saving**       | `SaveData(component)`               | Save a single component                              |
+|                  | `SaveDataForObject(persistentObj)`  | Save all components of an object                     |
+|                  | `SaveAllData()`                     | Save all components (synchronous)                    |
+| **Async Saving** | *Implement yourself*                | Use Task.Run or coroutines for async                 |
+| **Deletion**     | `DeleteData(component)`             | Delete saved data for a component                    |
+| **Slot**         | `SetCurrentSlot(slotId)`            | Change current save slot                             |
 
 ### Key Points
 

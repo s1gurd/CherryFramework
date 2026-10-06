@@ -24,9 +24,11 @@ The CherryFramework Data Models system provides a robust, observable data layer 
 - **Centralized Model Management**: `ModelService` handles all model instances
 - **Observable Properties**: Automatic change notification
 - **Two-way Binding**: Bind UI elements to model data
+- **Binding Activation Modes**: Control when a binding first fires and whether it delivers updates before the model is ready (`BindingActivation` enum)
 - **Value Processing**: Transform values through pipelines
-- **Automatic Persistence**: Save/load models to PlayerPrefs or custom storage
-- **Code Generation**: Auto-create model classes from templates
+- **Automatic Persistence**: Save/load models to PlayerPrefs or custom storage, with `ReadyMode` control over when a model becomes ready after loading
+- **Transient Models**: Short-lived, ID-keyed model instances managed by `ModelService`
+- **Code Generation**: Auto-create model classes from templates, including generic templates
 - **Singleton Management**: Global model instances
 - **Type Safety**: Generic accessors and bindings
 
@@ -49,9 +51,14 @@ public class ModelService
     // Constructor
     public ModelService(ModelDataStorageBridgeBase bridge, bool debugMessages);
 
-    // Methods
+    // Singleton methods
     public T GetOrCreateSingletonModel<T>() where T : DataModelBase, new();
     public bool MakeModelSingleton<T>(T source) where T : DataModelBase;
+
+    // Transient methods (short-lived models keyed by a string ID)
+    public T GetOrCreateTransientModel<T>(string id) where T : DataModelBase, new();
+    public bool ReleaseTransientModel(string id);
+    public bool ReleaseTransientModel(DataModelBase model);
 }
 ```
 
@@ -63,10 +70,13 @@ public class ModelService
 
 ### Methods
 
-| Method                           | Description                                |
-| -------------------------------- | ------------------------------------------ |
-| `GetOrCreateSingletonModel<T>()` | Gets existing singleton or creates new one |
-| `MakeModelSingleton<T>()`        | Registers an existing model as singleton   |
+| Method                                       | Description                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| `GetOrCreateSingletonModel<T>()`             | Gets existing singleton or creates new one                             |
+| `MakeModelSingleton<T>()`                    | Registers an existing model as singleton                               |
+| `GetOrCreateTransientModel<T>(id)`          | Gets existing transient model by ID or creates a new one with that ID  |
+| `ReleaseTransientModel(id)`                 | Removes a transient model by ID, returns `true` if it existed          |
+| `ReleaseTransientModel(model)`              | Removes a transient model instance (looked up by its `Id`), `true` if removed |
 
 ### Usage Examples
 
@@ -79,8 +89,12 @@ public class GameInstaller : InstallerBehaviourBase
 
     protected override void Install()
     {
-        // Create storage bridge
-        var bridge = new PlayerPrefsBridge<PlayerPrefsData>();
+        // Create a shared PlayerPrefs implementation (reuse the same instance
+        // for ModelService and SaveGameManager so both see the same data)
+        var playerPrefs = new PlayerPrefsData();
+
+        // Create storage bridge (IPlayerPrefs is injected via constructor)
+        var bridge = new PlayerPrefsBridge(playerPrefs);
 
         // Create model service with bridge
         var modelService = new ModelService(bridge, _debugModels);
@@ -107,9 +121,10 @@ public class GameManager : BehaviourBase
         _player = _modelService.GetOrCreateSingletonModel<PlayerModel>();
         _settings = _modelService.GetOrCreateSingletonModel<SettingsModel>();
 
-        // Register callback to be called when the data becomes ready
-        // Also note invokeImmediate: false - this ensures that binding does not get invoked right after registering
-        Bindings.CreateBinding(_gameState.ReadyAccessor, ContinueLoading, invokeImmediate: false);
+        // Register callback to be called when the data becomes ready.
+        // ActivateImmediate registers the binding now without invoking it with the
+        // current (still false) value - it only fires when Ready actually flips to true.
+        Bindings.CreateBinding(_settings.ReadyAccessor, ContinueLoading, BindingActivation.ActivateImmediate);
 
         // Register for persistence
         _modelService.DataStorage.RegisterModelInStorage(_player);
@@ -169,14 +184,16 @@ public abstract class DataModelBase
     [JsonIgnore] public string Id { get; set; }
     [JsonIgnore] public string SlotId { get; set; }
     [JsonIgnore] public bool Ready { get; set; }
-    [JsonIgnore] public Accessor<bool> ReadyAccessor { get; }
 
-    // Protected dictionaries for property access
-    protected Dictionary<string, Delegate> Getters { get; }
-    protected Dictionary<string, Delegate> Setters { get; }
+    // Public field (created in the constructor)
+    [JsonIgnore] public Accessor<bool> ReadyAccessor;
+
+    // Protected fields for property access
+    protected Dictionary<string, Delegate> Getters;
+    protected Dictionary<string, Delegate> Setters;
 
     // Methods
-    public void AddBinding<T>(string memberName, DownwardBindingHandler handler, bool invokeImmediate);
+    public void AddBinding<T>(string memberName, DownwardBindingHandler handler);
     public void RemoveBinding(DownwardBindingHandler handler);
     public T GetValue<T>(string memberName);
     public void SetValue<T>(string memberName, T value);
@@ -204,16 +221,18 @@ public abstract class DataModelBase
 #### AddBinding
 
 ```csharp
-public void AddBinding<T>(string memberName, DownwardBindingHandler handler, bool invokeImmediate)
+public void AddBinding<T>(string memberName, DownwardBindingHandler handler)
 ```
 
-Registers a binding for a model property.
+Registers a binding for a model property. Whether the callback is invoked
+immediately with the current value (and whether updates are delivered before the
+model is ready) is determined by the handler's `ActivationMode`
+(`BindingActivation` enum, see [Binding Activation Modes](#binding-activation-modes)).
 
 **Parameters**:
 
 - `memberName`: Name of the property
-- `handler`: Binding handler with callback
-- `invokeImmediate`: Whether to invoke with current value immediately
+- `handler`: Binding handler with callback and activation mode
 
 #### Send
 
@@ -222,6 +241,25 @@ protected void Send<T>(string memberName, T value)
 ```
 
 Notifies all subscribers of a property change.
+
+#### FillFrom
+
+```csharp
+public void FillFrom(object instance)
+```
+
+Copies same-named, same-typed members from an existing instance (for example
+a template or a DTO) into this model: for every writable model property, the
+value is taken from the source's property of the same name, falling back to
+its field. Reflection results are cached per `(source type, model type)`
+pair, so repeated calls are cheap.
+
+```csharp
+// Populate a model from a plain data class without manual assignment
+var data = new PlayerData { Health = 100, PlayerName = "Alice" };
+var model = _modelService.GetOrCreateSingletonModel<PlayerModel>();
+model.FillFrom(data); // copies matching members (no Send, bindings not notified)
+```
 
 ### Example Model
 
@@ -307,7 +345,7 @@ public class Accessor<T>
     public T ProcessedValue { get; }      // Value after processors
 
     // Methods
-    public DownwardBindingHandler BindDownwards(Action<T> callback, bool invokeImmediate = true);
+    public DownwardBindingHandler BindDownwards(Action<T> callback, BindingActivation activationMode = BindingActivation.InvokeImmediate);
     public void InvokeDownwardBindings();
     public ValueProcessor AddProcessor(Func<T, T> processor, int priority = 0);
     public void RemoveProcessor(ValueProcessor processor);
@@ -371,6 +409,7 @@ Bindings System
 public class DownwardBindingHandler
 {
     public readonly DataModelBase Model;
+    public readonly BindingActivation ActivationMode;
 }
 
 public class DownwardBindingHandler<T> : DownwardBindingHandler
@@ -378,6 +417,40 @@ public class DownwardBindingHandler<T> : DownwardBindingHandler
     public Action<T> DownwardCallback { get; }
 }
 ```
+
+### Binding Activation Modes
+
+Bindings are created with a `BindingActivation` mode that controls two things:
+whether the callback is invoked right away with the current value, and whether
+updates are delivered while the model is not yet `Ready`.
+
+```csharp
+public enum BindingActivation
+{
+    InvokeImmediate = 0,  // default
+    ActivateImmediate = 1,
+    InvokeOnReady = 2,
+    ActivateOnReady = 3
+}
+```
+
+| Mode                | Invoked with current value at bind time | Delivers updates while model is not ready |
+| ------------------- | --------------------------------------- | ----------------------------------------- |
+| `InvokeImmediate`   | Yes                                     | Yes                                       |
+| `ActivateImmediate` | No                                      | Yes                                       |
+| `InvokeOnReady`     | Queued - fires once when the model becomes ready | No (updates only after ready)  |
+| `ActivateOnReady`   | No                                      | No (updates only after ready)             |
+
+Behaviour details:
+
+- `InvokeOnReady` handlers registered while the model is not ready are queued in
+  the model's on-ready callback list and invoked exactly once when `Ready`
+  flips to `true`. Bindings on the `Ready` member itself are never queued, since
+  the `Ready` setter already delivers that single update.
+- While the model is not ready, `Send` silently skips `InvokeOnReady` and
+  `ActivateOnReady` handlers, so they cannot observe stale (pre-ready) values.
+- Setting `Ready` back to `false` (or re-setting it to `true`) logs a warning,
+  since models are expected to transition to ready exactly once.
 
 ### Bindings Container
 
@@ -389,7 +462,7 @@ public class DownwardBindingHandler<T> : DownwardBindingHandler
 public class Bindings
 {
     // Methods
-    public DownwardBindingHandler CreateBinding<T>(Accessor<T> accessor, Action<T> callback, bool invokeImmediate = true);
+    public DownwardBindingHandler CreateBinding<T>(Accessor<T> accessor, Action<T> callback, BindingActivation activationMode = BindingActivation.InvokeImmediate);
     public void ReleaseAllBindings();
     public void ReleaseBinding(DownwardBindingHandler handler);
 }
@@ -557,7 +630,7 @@ public abstract class ModelDataStorageBridgeBase
     public virtual bool ModelExistsInStorage(DataModelBase model);
     public virtual bool ModelExistsInStorage<T1>(string slotId = "", string id = "");
     public virtual bool RegisterModelInStorage(DataModelBase model);
-    public virtual bool LoadModelData(DataModelBase model, bool makeReady = true);
+    public virtual bool LoadModelData(DataModelBase model, ReadyMode makeReady = ReadyMode.MakeReadyAnyway);
     public virtual bool SaveModelToStorage(DataModelBase model);
     public virtual bool DeleteModelFromStorage(DataModelBase model);
     public virtual void SaveAllModelsById(string id);
@@ -568,21 +641,43 @@ public abstract class ModelDataStorageBridgeBase
 }
 ```
 
-### PlayerPrefsBridge&lt;T&gt;
+### PlayerPrefsBridge
 
 **Namespace**: `CherryFramework.DataModels.ModelDataStorageBridges`
 
 **Purpose**: Concrete implementation using Unity PlayerPrefs with JSON serialization.
+The `IPlayerPrefs` implementation is injected via the constructor, so the same
+instance can be shared with other services (e.g. `SaveGameManager`).
 
 ```csharp
-public class PlayerPrefsBridge<T> : ModelDataStorageBridgeBase where T : IPlayerPrefs, new()
+public class PlayerPrefsBridge : ModelDataStorageBridgeBase
 {
-    private readonly IPlayerPrefs _playerPrefs = new T();
+    public PlayerPrefsBridge(IPlayerPrefs playerPrefs);
 
     // Key generation pattern: {id}-{slotId}-{type}
     // For singletons: SINGLETON-{slotId}-{type}
 }
 ```
+
+### ReadyMode
+
+Controls when a model is marked `Ready` after `LoadModelData`:
+
+```csharp
+public enum ReadyMode
+{
+    MakeReadyAnyway = 0,       // default - Ready is set even if no data was found
+    MakeReadyWhenDataFound = 1, // Ready is set only if data existed in storage
+    DoNotMakeReady = 100       // the bridge never touches Ready; the caller decides
+}
+```
+
+- `MakeReadyAnyway` (default) is what most apps want for synchronous loads.
+- `MakeReadyWhenDataFound` is useful to distinguish "new player, no save" from
+  "save restored", e.g. to show an onboarding flow only on first launch.
+- `DoNotMakeReady` is useful when several models must all load before the
+  game considers itself ready - you then set `Ready` yourself once the last
+  load completes.
 
 ### Example: Setting Up Storage
 
@@ -590,8 +685,11 @@ public class PlayerPrefsBridge<T> : ModelDataStorageBridgeBase where T : IPlayer
 // In your installer
 protected override void Install()
 {
+    // One shared IPlayerPrefs instance for all services that need persistence
+    var playerPrefs = new PlayerPrefsData();
+
     // Create bridge with PlayerPrefs storage
-    var bridge = new PlayerPrefsBridge<PlayerPrefsData>();
+    var bridge = new PlayerPrefsBridge(playerPrefs);
 
     // Create model service with bridge
     var modelService = new ModelService(bridge, debugMessages: true);
@@ -758,7 +856,31 @@ To generate models:
 
 1. Create template classes in `*.DataModels.Templates` namespace
 2. Use "Tools → UnityCodeGen → Generate" menu
-3. Generated models appear in `Assets/GeneratedDataModels/`
+3. Generated models appear in `Assets/Scripts/GeneratedDataModels/`
+   (the whole folder is deleted and regenerated on every run)
+
+#### Generic Templates
+
+Template classes may be generic. In that case the generated model class gets a
+type-argument suffix and the template's generic constraints are propagated to it:
+
+```csharp
+// Template
+public class StatsData<T> where T : struct, new()
+{
+    public T Value;
+}
+
+// Generated (file: StatsModel.T.Generated.cs)
+public class StatsModel<T> : DataModelBase where T : struct, new()
+{
+    private StatsData<T> _template = new();
+    ...
+}
+```
+
+Supported constraint kinds: type constraints, `class` / `struct`, and `new()`.
+Non-generic templates are unaffected and generate as before.
 
 ### Using Generated Models
 
@@ -962,7 +1084,7 @@ public class GameInstaller : InstallerBehaviourBase
 {
     protected override void Install()
     {
-        var bridge = new PlayerPrefsBridge<PlayerPrefsData>();
+        var bridge = new PlayerPrefsBridge(new PlayerPrefsData());
         var modelService = new ModelService(bridge, debugMessages: true);
 
         BindAsSingleton(modelService);

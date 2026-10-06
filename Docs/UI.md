@@ -128,13 +128,17 @@ public class ViewService : GeneralClassBase
 
     public ViewService(RootPresenterBase root, bool debugMessages);
 
-    // Pop views by type
-    public Sequence PopView<T>(PresenterBase mountingPoint = null, bool skipAnimation = false) where T : PresenterBase;
-    public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bool skipAnimation = false);
-    public Sequence PopView(Type type, PresenterBase mountingPoint = null, bool skipAnimation = false);
+    // Pop views by type (all overloads accept an optional Accessor<bool> readyAccessor)
+    public Sequence PopView<T>(PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null) where T : PresenterBase;
+    public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null);
+    public Sequence PopView(string typeString, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null);
+    public Sequence PopView(string typeString, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null);
+    public Sequence PopView(Type type, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null);
+    public Sequence PopView(Type type, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null);
 
     // Pop views by instance
-    public Sequence PopView(PresenterBase view, PresenterBase mountingPoint = null, bool skipAnimation = false);
+    public virtual Sequence PopView(PresenterBase view, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null);
+    public virtual Sequence PopView(PresenterBase view, out PresenterBase newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null);
 
     // Navigation
     public Sequence Back(bool skipAnimation = false);
@@ -167,7 +171,7 @@ DependencyContainer.Instance.BindAsSingleton(viewService);
 #### PopView (by type)
 
 ```csharp
-public Sequence PopView<T>(PresenterBase mountingPoint = null, bool skipAnimation = false) where T : PresenterBase
+public Sequence PopView<T>(PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null) where T : PresenterBase
 ```
 
 **Example**:
@@ -183,7 +187,7 @@ _viewService.PopView<InventoryPresenter>(hudPresenter);
 #### PopView with output
 
 ```csharp
-public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bool skipAnimation = false)
+public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
 ```
 
 **Example**:
@@ -191,6 +195,35 @@ public Sequence PopView<T>(out T newView, PresenterBase mountingPoint = null, bo
 ```csharp
 _viewService.PopView<SettingsPresenter>(out var settingsView);
 settingsView.SetConfiguration(currentSettings);
+```
+
+#### Waiting for Data with `readyAccessor`
+
+All `PopView` overloads accept an optional `Accessor<bool> readyAccessor`.
+When it is provided:
+
+1. The loading view is popped immediately (`PopLoadingView()`).
+2. The view's transition sequence is **paused** right after the view is
+   created, so the view appears behind the loading screen.
+3. A binding is created on the accessor (with `InvokeImmediate` semantics,
+   so an already-`true` value resumes the sequence at once).
+4. When the accessor becomes `true`, the sequence **resumes** and the view's
+   enter animation plays.
+
+This is the framework's way of showing "loading" while a view's data is being
+prepared (e.g. a model is not ready yet):
+
+```csharp
+// Show the level view, but only start the enter animation once the level model is ready
+_viewService.PopView<LevelPresenter>(hudPresenter, readyAccessor: levelModel.ReadyAccessor);
+```
+
+```csharp
+// Manual gating: load data asynchronously, then flip the accessor
+var ready = new Accessor<bool>(false);
+Task.Run(() => { data = LoadLevelData(); });
+// ... when the data arrives:
+ready.Send(true); // sequence resumes, view animates in
 ```
 
 #### Back navigation
@@ -260,7 +293,7 @@ public class GameUI : MonoBehaviour
 ```csharp
 public abstract class PresenterBase : InteractiveElementBase
 {
-    [Inject] protected ViewService ViewService;
+    [Inject] protected readonly ViewService ViewService;
 
     [Header("Hierarchy settings")]
     [SerializeField] private Canvas childrenContainer;
@@ -268,10 +301,10 @@ public abstract class PresenterBase : InteractiveElementBase
 
     public Canvas ChildrenContainer => childrenContainer;
     public List<PresenterBase> ChildPresenters => childPresenters;
-    public virtual bool Modal { get; private set; }
+    [field: SerializeField] public virtual bool Modal { get; private set; }
 
-    public List<PresenterBase> uiPath { get; set; } = new();
-    public PresenterBase currentChild { get; set; }
+    [HideInInspector] public List<PresenterBase> uiPath = new();
+    [HideInInspector] public PresenterBase currentChild;
 
     public void InitializePresenter();
     public virtual Sequence ShowFrom(PresenterBase previous, bool skipAnimation = false);
@@ -988,12 +1021,18 @@ public class ModalPresenter : PresenterBase
     }
 }
 
-// ViewService automatically blocks navigation past modal
-// _history.TryPeek(out var current)
-// if (current.Last() is IModal || current.Last().Modal)
-// {
-//     return; // Navigation blocked
-// }
+// ViewService automatically blocks navigation while the top view is modal:
+if (_history.TryPeek(out var current))
+{
+    if (current.Last() is IModal || current.Last().Modal)
+    {
+        newView = null;
+        return DOTween.Sequence(); // navigation blocked
+    }
+}
+
+// A view counts as modal when it implements the IModal marker interface
+// or when its PresenterBase.Modal property returns true.
 ```
 
 ---

@@ -109,7 +109,11 @@ public class SimplePool<T> where T : Component
 public T Get(T sample, Vector3 position, Quaternion rotation, Transform parent = null)
 ```
 
-Retrieves an object from pool, positions it, and returns it.
+Retrieves an object from the pool, positions it, and returns it.
+The pool reuses the first **inactive** instance of the sample (setting its
+position, rotation, and parent); if none is available it instantiates a new
+one from the sample. Already-active instances are left untouched, so a pool
+call never hijacks a running object.
 
 **Example**:
 
@@ -123,7 +127,8 @@ var bullet = bulletPool.Get(bulletPrefab, firePoint.position, firePoint.rotation
 public T Get(T sample)
 ```
 
-Retrieves an object without changing its transform.
+Retrieves an object without changing its transform - the first inactive
+instance is reused as-is, or a new one is instantiated from the sample.
 
 **Example**:
 
@@ -138,7 +143,8 @@ effect.transform.position = spawnPoint;
 public List<T> ActiveObjects(T sample)
 ```
 
-Returns all active objects for a sample type.
+Returns the pooled instances whose GameObject is currently active (destroyed
+Unity references are skipped). Returns an empty list for unknown samples.
 
 **Example**:
 
@@ -153,7 +159,8 @@ Debug.Log($"Active enemies: {activeCount}");
 public void Clear()
 ```
 
-Destroys all pooled objects.
+Destroys the GameObjects of **all** pooled instances via `Object.Destroy`
+(already-destroyed references are skipped) and empties the pool.
 
 **Example**:
 

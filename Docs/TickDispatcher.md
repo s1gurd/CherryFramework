@@ -160,12 +160,21 @@ var ticker = new Ticker(); // Automatically creates TickerBehaviour
 public void Register(ITickableBase obj, float tickPeriod = 0f)
 ```
 
-Registers any tickable object (implements ITickable, ILateTickable, or IFixedTickable).
+Registers any tickable object. An object may implement **several** tickable
+interfaces at once (e.g. `ITickable` + `ILateTickable` + `IFixedTickable`) -
+it is then registered in every matching update phase with the same period.
 
 **Parameters**:
 
-- `obj`: The object to register (must implement one of the tickable interfaces)
+- `obj`: The object to register (must implement at least one of the tickable interfaces)
 - `tickPeriod`: Minimum time in seconds between ticks (0 = every frame)
+
+**Timing note**: each registered entry seeds its `LastTick` with the current
+`Time.time`, so the **first tick fires immediately** (within the same frame)
+and `deltaTime` starts small; subsequent ticks respect the period.
+
+If the object implements `IUnsubscriber`, the Ticker automatically hooks an
+unsubscription into it (see [Automatic Cleanup](#automatic-cleanup)).
 
 **Example**:
 

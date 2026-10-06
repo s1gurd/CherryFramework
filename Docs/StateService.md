@@ -400,10 +400,16 @@ public StateSubscription AddStateSubscription(
 
 - `condition`: Function that checks StateAccessor and returns true to trigger
 - `callback`: Action to invoke when condition is met
-- `obj`: Subscriber object (for auto-cleanup, uses callback target if null)
+- `obj`: Subscriber object (for auto-cleanup, falls back to the callback's
+  target; if both are `null` an error is logged and `null` is returned)
 - `destroyAfterInvoke`: If true, subscription is removed after first invocation
 
-**Returns**: The created subscription
+**Returns**: The created subscription (`null` if the subscriber cannot be determined)
+
+**Exception isolation**: during `LateTick` every subscription is evaluated in
+its own try/catch - a throwing subscription is logged and skipped while the
+rest of the subscriptions still run on that frame, so one broken subscriber
+cannot break the whole state pipeline.
 
 **Examples**:
 
