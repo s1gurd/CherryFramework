@@ -30,94 +30,18 @@ Unity 6 packages.
 You get an endless runner - Space to jump, the obstacle speed ramps up.
 
 **3. Watch it work in the Console.** The Sample ships with debug logging turned
-on, so the very first Play already prints what the framework is doing. You
-should see lines like:
+on, so the very first Play already prints what the framework is doing: every
+save and load carries its storage key and raw JSON, every model load too, and
+the `StateService` prints only in frames where something was emitted. Each
+service is covered where it belongs:
 
-```
-[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-GeneratedDataModels.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
-[Save Game Manager] Loaded component Sample.Player with key SceneId:0.7abb6373-...-Sample.Player found data: {"_direction":{}, "_jumpState":0}
-[Save Game Manager] Loaded component Sample.Spawner with key SceneId:0.58f6ad04-...-Sample.Spawner found data: {"_spawnedObjects":[0,0,4,5]}
-[State Service] Set status "GameRunning" at time 5,713958
-[State Service] Invoked 4 events at time 5,713958
-[View Service] History push:
-#PlayerDead(Clone)/
-```
+- [Save Game System](#3-save-game-system) - the full console walkthrough of the
+  delete-then-save cycle, what survives a restart, and how keys are built
+- [Data Models System](#2-data-models-system) - the model half of the output, and
+  why `GameStatistics` accumulates across runs while `GameState` does not
 
-And when you stop the editor, the other half of the cycle:
-
-```
-[Save Game Manager] Deleted data for component Sample.Player with key SceneId:0.7abb6373-...
-[Save Game Manager] Deleted data for component ... with key Obstacle:0-...
-[Save Game Manager] Saved key SceneId:0.7abb6373-...-Sample.Player with {"_direction":{},"_jumpState":0}
-[Save Game Manager] Saved key SceneId:0.58f6ad04-...-Sample.Spawner with {"_spawnedObjects":[0,6,4,1]}
-[Save Game Manager] Saved key Obstacle:0-... with {"_position":{"x":-5.581851,...},"_rotation":...,"_scale":...}
-[Save Game Manager] Saved key Obstacle:1-... with {"_position":{"x":-0.74753,...},...}
-[Save Game Manager] Saved key Obstacle:2-... with {"_position":{"x":3.33741283,...},...}
-[Save Game Manager] Saved key Obstacle:3-... with {"_position":{"x":7.39093876,...},...}
-[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStatisticsModel with content: {..., "TriesNum":6}
-```
-
-Every key is deleted and then immediately written back - that pairing is the
-whole trick: the session is wiped so stale leftovers cannot leak, then saved
-again in the same frame.
-
-(`Time.time` is printed with the machine's locale, hence the comma.)
-
-That output is the framework in the open:
-
-- every save/load line shows the **storage key** and the raw JSON behind it;
-- `SINGLETON-...` keys belong to **data models** (`ModelService`),
-  `SceneId:0.<guid>-<type>` to **scene objects** and `Obstacle:0-...` to
-  **spawned objects** (`SaveGameManager`);
-- `Invoked 4 events at time ...` appears **only in frames where something was
-  emitted** - that is the `StateService` gate, visible in the log.
-
-**To see the save/load cycle for yourself:**
-
-1. Play for a few seconds, then **stop the editor** (not just close the scene).
-   You will see `Deleted data for component ...` for every key, immediately
-   followed by `Saved key ...` for each of them - `ClearData()` wipes the session
-   and `SaveAllData()` writes it all straight back.
-2. Press Play again and compare the `Loaded key ...` positions with the
-   `Saved key ...` ones: the Player and all four obstacles come back at exactly
-   the same coordinates, and `GameStatistics` shows a higher `TriesNum`.
-3. Press **Escape** for the pause menu, then **statistics**: `Tries` is higher,
-   `TotalDistance` is larger, and `MaxDistance` kept your best run.
-
-**What survives a restart, in this Sample:** everything. On quit
-`GameManager.OnApplicationQuit` clears the session keys and then writes them all
-back, so the next Play restores:
-
-- the **Player's** position (`SceneId:0.7abb...-Sample.Player`)
-- every **spawned obstacle** at the exact spot it was left (`Obstacle:0-3`, each
-  storing `_position`, `_rotation`, `_scale`)
-- the **Spawner's** list of live obstacle indices, so it knows what to respawn
-- the **data models** - and here `GameStatistics` accumulates *across* runs:
-  `Tries`, `TotalDistance`, `TotalRunTime` and `MaxDistance` are never reset,
-  while `GameState` (`DistanceTraveled`, `RunTime`) is rewritten each run
-
-A key that was never written shows up as `NOT FOUND model by key: ...` or
-`Not found data for component ...`; that is normal, not an error.
-
-To wipe everything, delete the PlayerPrefs entries for the app.
-
-### Turning the logging off
-
-Each service takes a `debugMessages` flag, and they are independent:
-
-| Service                    | flag                | What it prints |
-| -------------------------- | ------------------- | -------------- |
-| `ModelService` / bridge    | `debugMessages`     | every model load / save / remove, with key and JSON |
-| `SaveGameManager`          | `debugMessages`     | every component load / save, with key and JSON |
-| `ViewService`              | `debugMessages`     | the navigation history on each push/pop |
-| `StateService`             | `debugMessages`     | every emitted event, status change and subscription run |
-
-`SoundService` has no such flag - it logs errors only (unknown key, missing
-emitter).
-
-In the Sample every one of these is `true`, so a fresh Play fills the Console
-with the full picture. It is noisy - `StateService` logs on every frame in which
-something was emitted - so turn the flags back off once you have seen it work.
+If you want to read the whole trace in one place, [Debug output](#debug-output)
+later in this file lists every service and its `debugMessages` flag.
 
 **4. Read the Sample README**, which walks through each system against the real
 scripts: [Assets/Sample/README.md](Assets/Sample/README.md).
@@ -136,11 +60,38 @@ scripts: [Assets/Sample/README.md](Assets/Sample/README.md).
 | [SoundService.md](Docs/SoundService.md) | you play sounds by key |
 | [SimplePool.md](Docs/SimplePool.md) | you pool frequently spawned objects |
 
-**6. Before you edit a data template, know the generator.** Data models are
-generated, never written by hand. If you change a `*.DataModels.Templates`
-class, run **`Tools → UnityCodeGen → Generate`**; the whole
-`Assets/Scripts/GeneratedDataModels/` folder is deleted and rebuilt from your
-templates.
+### Debug output
+
+Every service except `SoundService` takes a `debugMessages` flag, and the flags
+are independent:
+
+| Service                 | How to set it                | What it prints |
+| ----------------------- | ---------------------------- | -------------- |
+| `ModelService`          | `new ModelService(bridge, debugMessages)` | every model load / save / remove, with key and JSON |
+| `SaveGameManager`       | `new SaveGameManager(prefs, debugMessages)` | every component load / save, with key and JSON |
+| `ViewService`           | `new ViewService(root, debugMessages)` | the navigation history on each push/pop |
+| `StateService`          | `new StateService(debugMessages)` | every emitted event, status change and subscription run |
+
+`SoundService` has no such flag - it logs errors only (unknown key, missing
+emitter).
+
+In the Sample every one of these is `true`, so a fresh Play fills the Console
+with the full picture. It is noisy - `StateService` logs in every frame where
+something was emitted - so turn the flags back off once you have seen it work.
+
+`ViewService` also prints things worth recognising, because they explain the
+routing rather than the data:
+
+```
+[State Service] Set status "GameRunning" at time 5,713958
+[State Service] Invoked 4 events at time 5,713958
+[View Service] History push:
+#PlayerDead(Clone)/
+```
+
+`Invoked 4 events` appears **only in frames where something was emitted** - that
+is the `StateService` gate, visible in the log. (`Time.time` prints with the
+machine's locale, hence the comma.)
 
 ### Installing into your own project
 
@@ -259,6 +210,37 @@ An observable data layer with automatic UI binding and persistence. Models notif
 - Pluggable storage (PlayerPrefs, file system, etc.)
 - Code generation from templates
 
+**Model keys and what you see in the Console**
+
+Models use their own key namespace, so their lines are easy to tell apart from
+`SaveGameManager`'s in the same trace:
+
+```
+[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-GeneratedDataModels.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
+[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStatisticsModel with content: {..., "TriesNum":6}
+```
+
+A `SINGLETON-` prefix means a singleton model; `SceneId:0.<guid>-<type>` and
+`Obstacle:0-...` in the same Console belong to
+[Save Game System](#3-save-game-system) instead.
+
+**Which models accumulate.** Persistence does not reset anything by itself - the
+Sample decides what to clear on quit. `GameManager.OnApplicationQuit` deletes
+`GameState` from storage before saving both models, so:
+
+| Model | Across runs | Why |
+| --- | --- | --- |
+| `GameState` | rewritten | `DistanceTraveled`, `RunTime` describe the run in progress, so they are cleared |
+| `GameStatistics` | accumulates | `Tries`, `TotalDistance`, `TotalRunTime`, `MaxDistance` are career totals |
+
+**Before you edit a data template, know the generator.** Models are generated,
+never written by hand: a `PlayerDataModel` that looks hand-written above is
+produced from a `*.DataModels.Templates` class. If you change a template, run
+**`Tools → UnityCodeGen → Generate`** - the whole
+`Assets/Scripts/GeneratedDataModels/` folder is deleted and rebuilt, so any
+edit made directly inside it is lost. Details in
+[Code Generation](Docs/DataModels.md#code-generation).
+
 **Example**:
 
 ```csharp
@@ -321,6 +303,58 @@ A comprehensive save/load system for game objects and components. Supports both 
 
 - **Scene Objects**: `SceneId:{buildIndex}.{guid}` (e.g., `SceneId:3.550e8400-e29b-41d4-a716-446655440000`)
 - **Spawnable Objects**: `{customId}:{suffix}` (e.g., `Enemy:42` where suffix separates copies)
+
+#### Seeing the save/load cycle in the Console
+
+With `SaveGameManager`'s `debugMessages` on, a Play prints the load half of the
+cycle:
+
+```
+[Save Game Manager] Loaded component Sample.Player with key SceneId:0.7abb6373-...-Sample.Player found data: {"_direction":{}, "_jumpState":0}
+[Save Game Manager] Loaded component Sample.Spawner with key SceneId:0.58f6ad04-...-Sample.Spawner found data: {"_spawnedObjects":[0,0,4,5]}
+```
+
+Stopping the editor prints the other half - every key deleted, then immediately
+written back:
+
+```
+[Save Game Manager] Deleted data for component Sample.Player with key SceneId:0.7abb6373-...
+[Save Game Manager] Deleted data for component ... with key Obstacle:0-...
+[Save Game Manager] Saved key SceneId:0.7abb6373-...-Sample.Player with {"_direction":{},"_jumpState":0}
+[Save Game Manager] Saved key SceneId:0.58f6ad04-...-Sample.Spawner with {"_spawnedObjects":[0,6,4,1]}
+[Save Game Manager] Saved key Obstacle:0-... with {"_position":{"x":-5.581851,...},"_rotation":...,"_scale":...}
+[Save Game Manager] Saved key Obstacle:1-... with {"_position":{"x":-0.74753,...},...}
+```
+
+That delete-then-save pairing is the whole trick, and the Sample does it on
+purpose. In `GameManager.OnApplicationQuit`, every registered component is sent
+through `DeleteData` first so leftovers from an earlier run cannot leak, and
+then `SaveAllData()` writes the whole session back in the same frame.
+
+Note that `DeleteData` only removes the entry from storage - it does not reset
+the fields of the object that is still alive in memory.
+
+**Try it yourself:**
+
+1. Play for a few seconds, then **stop the editor** (not just close the scene).
+   You see a `Deleted data for component ...` line per key, each followed by its
+   `Saved key ...`.
+2. Press Play again and compare the loaded coordinates with the saved ones: the
+   Player and all four obstacles come back at exactly the same spots.
+
+**What this restores on the next Play:**
+
+- the **Player's** position (`SceneId:0.7abb...-Sample.Player`)
+- every **spawned obstacle** where it was left (`Obstacle:0-3`, each storing
+  `_position`, `_rotation`, `_scale` - the transform is saved automatically)
+- the **Spawner's** list of live obstacle indices, so it knows what to respawn
+
+A key that was never written shows up as `Not found data for component ...`;
+that is normal, not an error. To wipe everything, delete the app's PlayerPrefs
+entries.
+
+The models in the same trace are explained in
+[Data Models System](#2-data-models-system).
 
 **Example**:
 
