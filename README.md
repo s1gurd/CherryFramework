@@ -127,6 +127,26 @@ can receive `[Inject]` fields before they are filled.
 
 ---
 
+## Working with AI assistance
+
+The framework is shaped in ways that suit code written with the help of an AI
+assistant, and a few of them are deliberate.
+
+| | |
+| --- | --- |
+| **Models are generated, not hand-written** | declare a `[Serializable]` class with public fields - about 17 lines - and `Tools → UnityCodeGen → Generate` emits the ~97-line model with its getters, setters and accessors |
+| **Events are typed** | `EmitEvent<T>(string key, T payload)` puts the payload under compiler control; keeping every key in one `static class` of `const string` means a single grep returns the entire legal alphabet |
+| **One registration file** | every service and its constructor signature sits in a single `InstallerBehaviourBase.Install()` |
+| **Uniform base classes** | four bases plus `[Inject]` and `[SaveGameData]` - a small, repeatable set of patterns |
+
+**The caveat, stated plainly:** there are no automated tests. A clean compile
+is as far as the framework itself takes you, and nothing will catch a
+regression later. An installer's `[SerializeField]` references are invisible to
+the compiler too - one left unassigned stays `null` and throws at runtime, not
+at build time.
+
+---
+
 ## CherryFramework Overview
 
 ### Philosophy
