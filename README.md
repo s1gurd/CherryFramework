@@ -220,6 +220,18 @@ Models use their own key namespace, so their lines are easy to tell apart from
 [Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStatisticsModel with content: {..., "TriesNum":6}
 ```
 
+A model that was never written gets its own line instead of the load one, and
+that is normal on a first Play:
+
+```
+[Model Service - PlayerPrefs] NOT FOUND model by key: SINGLETON-GeneratedDataModels.GameStateDataModel in PlayerPrefs
+```
+
+Whether a miss leaves the model at its defaults depends on the `ReadyMode` you
+load with: `MakeReadyAnyway` marks it ready regardless, while
+`MakeReadyWhenDataFound` keeps it un-ready until something is written - see
+[Storage Bridges](Docs/DataModels.md#storage-bridges).
+
 A `SINGLETON-` prefix means a singleton model; `SceneId:0.<guid>-<type>` and
 `Obstacle:0-...` in the same Console belong to
 [Save Game System](#3-save-game-system) instead.
