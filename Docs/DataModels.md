@@ -3,9 +3,9 @@
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [ModelService](#modelservice)
-3. [DataModelBase](#datamodelbase)
-4. [Accessor&lt;T&gt;](#accessort)
+2. [DataModelBase](#datamodelbase)
+3. [Accessor&lt;T&gt;](#accessort)
+4. [ModelService](#modelservice)
 5. [Bindings System](#bindings-system)
 6. [Value Processors](#value-processors)
 7. [Storage Bridges](#storage-bridges)
@@ -51,143 +51,6 @@ using UnityEngine;                              // MonoBehaviour, Mathf, Debug
 `[JsonIgnore]` here is `Newtonsoft.Json.JsonIgnoreAttribute`, **not** the one
 from `System.Text.Json`. Generated models use Newtonsoft, and using the wrong
 attribute leaves your accessor serialized into the save file.
-
-## ModelService
-
-**Namespace**: `CherryFramework.DataModels`
-
-**Purpose**: Central service for managing all model instances, their lifecycle, and persistence. This is the primary entry point for working with data models in the framework.
-
-### Class Definition
-
-```csharp
-public class ModelService
-{
-    // Properties
-    public readonly ModelDataStorageBridgeBase DataStorage;
-
-    // Constructor
-    public ModelService(ModelDataStorageBridgeBase bridge, bool debugMessages);
-
-    // Singleton methods
-    public T GetOrCreateSingletonModel<T>() where T : DataModelBase, new();
-    public bool MakeModelSingleton<T>(T source) where T : DataModelBase;
-
-    // Transient methods (short-lived models keyed by a string ID)
-    public T GetOrCreateTransientModel<T>(string id) where T : DataModelBase, new();
-    public bool ReleaseTransientModel(string id);
-    public bool ReleaseTransientModel(DataModelBase model);
-}
-```
-
-### Properties
-
-| Name          | Type                         | Description                          |
-| ------------- | ---------------------------- | ------------------------------------ |
-| `DataStorage` | `ModelDataStorageBridgeBase` | Storage bridge for persisting models |
-
-### Methods
-
-| Method                                       | Description                                                            |
-| -------------------------------------------- | ---------------------------------------------------------------------- |
-| `GetOrCreateSingletonModel<T>()`             | Gets existing singleton or creates new one                             |
-| `MakeModelSingleton<T>()`                    | Registers an existing model as singleton                               |
-| `GetOrCreateTransientModel<T>(id)`          | Gets existing transient model by ID or creates a new one with that ID  |
-| `ReleaseTransientModel(id)`                 | Removes a transient model by ID, returns `true` if it existed          |
-| `ReleaseTransientModel(model)`              | Removes a transient model instance (looked up by its `Id`), `true` if removed |
-
-### Usage Examples
-
-#### Basic Setup in Installer
-
-```csharp
-[DefaultExecutionOrder(-10000)]
-public class GameInstaller : InstallerBehaviourBase
-{
-    [SerializeField] private bool _debugModels = true;
-
-    protected override void Install()
-    {
-        // Create a shared PlayerPrefs implementation (reuse the same instance
-        // for ModelService and SaveGameManager so both see the same data)
-        var playerPrefs = new PlayerPrefsData();
-
-        // Create storage bridge. This is a plain constructor argument, not DI -
-        // `[Inject]` means something different in this framework.
-        var bridge = new PlayerPrefsBridge(playerPrefs);
-
-        // Create model service with bridge
-        var modelService = new ModelService(bridge, _debugModels);
-
-        // Bind as singleton for injection
-        BindAsSingleton(modelService);
-    }
-}
-```
-
-#### Accessing Models
-
-```csharp
-public class GameManager : BehaviourBase
-{
-    [Inject] private readonly ModelService _modelService;
-
-    private PlayerModel _player;
-    private SettingsModel _settings;
-
-    private void Start()
-    {
-        // Get or create singleton models
-        _player = _modelService.GetOrCreateSingletonModel<PlayerModel>();
-        _settings = _modelService.GetOrCreateSingletonModel<SettingsModel>();
-
-        // Register callback to be called when the data becomes ready.
-        // ActivateImmediate registers the binding now without invoking it with the
-        // current (still false) value - it only fires when Ready actually flips to true.
-        Bindings.CreateBinding(_settings.ReadyAccessor, ContinueLoading, BindingActivation.ActivateImmediate);
-
-        // Register for persistence
-        _modelService.DataStorage.RegisterModelInStorage(_player);
-        _modelService.DataStorage.RegisterModelInStorage(_settings);
-
-        // Load saved data, Ready property in models are set to True
-        _modelService.DataStorage.LoadModelData(_player);
-        _modelService.DataStorage.LoadModelData(_settings);
-    }
-
-    private void ContinueLoading(bool ready)
-    {
-        if (ready)
-            // continue
-    }
-
-    private void OnApplicationQuit()
-    {
-        // Save all models
-        _modelService.DataStorage.SaveAllModels();
-    }
-}
-```
-
-#### Registering Existing Models as Singletons
-
-```csharp
-public class SaveGameLoader
-{
-    [Inject] private readonly ModelService _modelService;
-
-    public void LoadSavedProfile(PlayerModel savedProfile)
-    {
-        // Register existing model as singleton
-        if (_modelService.MakeModelSingleton(savedProfile))
-        {
-            Debug.Log("Saved profile registered as singleton");
-        }
-    }
-}
-```
-
----
 
 ## DataModelBase
 
@@ -477,6 +340,143 @@ pipeline, it does not replace the first one.
 
 ---
 
+## ModelService
+
+**Namespace**: `CherryFramework.DataModels`
+
+**Purpose**: Central service for managing all model instances, their lifecycle, and persistence. This is the primary entry point for working with data models in the framework.
+
+### Class Definition
+
+```csharp
+public class ModelService
+{
+    // Properties
+    public readonly ModelDataStorageBridgeBase DataStorage;
+
+    // Constructor
+    public ModelService(ModelDataStorageBridgeBase bridge, bool debugMessages);
+
+    // Singleton methods
+    public T GetOrCreateSingletonModel<T>() where T : DataModelBase, new();
+    public bool MakeModelSingleton<T>(T source) where T : DataModelBase;
+
+    // Transient methods (short-lived models keyed by a string ID)
+    public T GetOrCreateTransientModel<T>(string id) where T : DataModelBase, new();
+    public bool ReleaseTransientModel(string id);
+    public bool ReleaseTransientModel(DataModelBase model);
+}
+```
+
+### Properties
+
+| Name          | Type                         | Description                          |
+| ------------- | ---------------------------- | ------------------------------------ |
+| `DataStorage` | `ModelDataStorageBridgeBase` | Storage bridge for persisting models |
+
+### Methods
+
+| Method                                       | Description                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| `GetOrCreateSingletonModel<T>()`             | Gets existing singleton or creates new one                             |
+| `MakeModelSingleton<T>()`                    | Registers an existing model as singleton                               |
+| `GetOrCreateTransientModel<T>(id)`          | Gets existing transient model by ID or creates a new one with that ID  |
+| `ReleaseTransientModel(id)`                 | Removes a transient model by ID, returns `true` if it existed          |
+| `ReleaseTransientModel(model)`              | Removes a transient model instance (looked up by its `Id`), `true` if removed |
+
+### Usage Examples
+
+#### Basic Setup in Installer
+
+```csharp
+[DefaultExecutionOrder(-10000)]
+public class GameInstaller : InstallerBehaviourBase
+{
+    [SerializeField] private bool _debugModels = true;
+
+    protected override void Install()
+    {
+        // Create a shared PlayerPrefs implementation (reuse the same instance
+        // for ModelService and SaveGameManager so both see the same data)
+        var playerPrefs = new PlayerPrefsData();
+
+        // Create storage bridge. This is a plain constructor argument, not DI -
+        // `[Inject]` means something different in this framework.
+        var bridge = new PlayerPrefsBridge(playerPrefs);
+
+        // Create model service with bridge
+        var modelService = new ModelService(bridge, _debugModels);
+
+        // Bind as singleton for injection
+        BindAsSingleton(modelService);
+    }
+}
+```
+
+#### Accessing Models
+
+```csharp
+public class GameManager : BehaviourBase
+{
+    [Inject] private readonly ModelService _modelService;
+
+    private PlayerModel _player;
+    private SettingsModel _settings;
+
+    private void Start()
+    {
+        // Get or create singleton models
+        _player = _modelService.GetOrCreateSingletonModel<PlayerModel>();
+        _settings = _modelService.GetOrCreateSingletonModel<SettingsModel>();
+
+        // Register callback to be called when the data becomes ready.
+        // ActivateImmediate registers the binding now without invoking it with the
+        // current (still false) value - it only fires when Ready actually flips to true.
+        Bindings.CreateBinding(_settings.ReadyAccessor, ContinueLoading, BindingActivation.ActivateImmediate);
+
+        // Register for persistence
+        _modelService.DataStorage.RegisterModelInStorage(_player);
+        _modelService.DataStorage.RegisterModelInStorage(_settings);
+
+        // Load saved data, Ready property in models are set to True
+        _modelService.DataStorage.LoadModelData(_player);
+        _modelService.DataStorage.LoadModelData(_settings);
+    }
+
+    private void ContinueLoading(bool ready)
+    {
+        if (ready)
+            // continue
+    }
+
+    private void OnApplicationQuit()
+    {
+        // Save all models
+        _modelService.DataStorage.SaveAllModels();
+    }
+}
+```
+
+#### Registering Existing Models as Singletons
+
+```csharp
+public class SaveGameLoader
+{
+    [Inject] private readonly ModelService _modelService;
+
+    public void LoadSavedProfile(PlayerModel savedProfile)
+    {
+        // Register existing model as singleton
+        if (_modelService.MakeModelSingleton(savedProfile))
+        {
+            Debug.Log("Saved profile registered as singleton");
+        }
+    }
+}
+```
+
+---
+
 ## Bindings System
 
 ### DownwardBindingHandler
@@ -628,7 +628,7 @@ public class TempUI : MonoBehaviour
 }
 ```
 
---- 
+---
 
 ## Value Processors
 

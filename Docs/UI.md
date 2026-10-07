@@ -4,11 +4,11 @@
 
 1. [Overview](#overview)
 2. [Core Concepts](#core-concepts)
-3. [View Service](#view-service)
-4. [Presenter System](#presenter-system)
-5. [Widget System](#widget-system)
-6. [Populator System](#populator-system)
-7. [UI Animation](#ui-animation)
+3. [UI Animation](#ui-animation)
+4. [View Service](#view-service)
+5. [Presenter System](#presenter-system)
+6. [Widget System](#widget-system)
+7. [Populator System](#populator-system)
 8. [Performance Considerations](#performance-considerations)
 9. [Common Issues and Solutions](#common-issues-and-solutions)
 10. [Best Practices](#best-practices)
@@ -154,6 +154,154 @@ The words overlap, so fix them once:
 | **widget**        | a reusable element with named visual states                     |
 | **element**       | a single `WidgetElement` inside a widget — this is what animates |
 | **populator**     | the thing that renders a dynamic list                          |
+
+---
+
+## UI Animation
+
+### UiAnimationBase (Abstract)
+
+**Namespace**: `CherryFramework.UI.UiAnimation`
+
+**Purpose**: Base class for all UI animations.
+
+```csharp
+public abstract class UiAnimationBase : MonoBehaviour
+{
+    [SerializeField] protected float duration = 0.3f;
+    [SerializeField] protected Ease showEasing = Ease.OutQuad;
+    [SerializeField] protected Ease hideEasing = Ease.OutQuad;
+
+    protected RectTransform Target { get; }
+    protected Sequence MainSequence;
+
+    public void Initialize();
+    protected abstract void OnInitialize();   // your subclass MUST implement this
+    public abstract Sequence Show(float delay = 0f);
+    public abstract Sequence Hide(float delay = 0f);
+}
+```
+
+`OnInitialize()` is where an animator captures what it needs (the target
+`RectTransform`, the `CanvasGroup`, the text component). Forgetting to
+override it is a compile error - declaring your own animator without it will
+not build.
+
+### UiAnimationSettings
+
+**Namespace**: `CherryFramework.UI.UiAnimation`
+
+**Purpose**: Configures an animator with delay and launch mode.
+
+```csharp
+[Serializable]
+public class UiAnimationSettings
+{
+    public UiAnimationBase animator;
+    public float delay = 0f;
+    public LaunchMode launchMode;
+}
+```
+
+### LaunchMode
+
+**Namespace**: `CherryFramework.UI.UiAnimation.Enums`
+
+**Purpose**: Determines when an animation plays in a sequence.
+
+| Value                           | Description                                  |
+| ------------------------------- | -------------------------------------------- |
+| `AtGlobalAnimationStart`        | Starts at the beginning of the sequence      |
+| `AtPreviousAnimatorStart`       | Starts at the same time as previous animator |
+| `AfterPreviousAnimatorFinished` | Starts after previous animator completes     |
+
+### Built-in Animators
+
+#### UiFade
+
+```csharp
+[RequireComponent(typeof(CanvasGroup), typeof(RectTransform))]
+public class UiFade : UiAnimationBase
+{
+    // Fades the CanvasGroup alpha
+}
+
+// Usage in inspector:
+// Add to any UI element with CanvasGroup
+```
+
+#### UiScale
+
+```csharp
+[RequireComponent(typeof(RectTransform))]
+public class UiScale : UiAnimationBase
+{
+    [SerializeField] private UiAnimatorEndValueTypes type;
+    [SerializeField] private Vector3 value;
+}
+
+// Scales the RectTransform
+```
+
+#### UiSlide
+
+```csharp
+[RequireComponent(typeof(RectTransform))]
+public class UiSlide : UiAnimationBase
+{
+    [SerializeField] private Vector2 positionDelta;
+    [SerializeField] private bool reverseDirectionOnHide = true;
+}
+
+// Slides based on percentage of element size
+```
+
+#### UiTextFade
+
+```csharp
+[RequireComponent(typeof(RectTransform), typeof(TMP_Text))]
+public class UiTextFade : UiAnimationBase
+{
+    // Fades TMP_Text alpha
+}
+```
+
+#### UiActive
+
+```csharp
+[RequireComponent(typeof(RectTransform))]
+public class UiActive : UiAnimationBase
+{
+    // Simply sets gameObject active/inactive
+}
+```
+
+### Animation Example
+
+```csharp
+public class AnimatedPanel : InteractiveElementBase
+{
+    [SerializeField] private List<UiAnimationSettings> _customAnimations; // Fill in the Editor
+
+    protected override void OnShowStart()
+    {
+        base.OnShowStart();
+        Debug.Log("Panel show started");
+    }
+
+    protected override void OnShowComplete()
+    {
+        base.OnShowComplete();
+        Debug.Log("Panel show completed");
+    }
+
+    public void PlayCustomSequence()
+    {
+        var seq = CreateSequence(_customAnimations, Purpose.Show);
+        seq.Play();
+    }
+}
+```
 
 ---
 
@@ -803,154 +951,6 @@ public class InventoryItemElement : PopulatorElementBase<ItemData>
         seq.Append(transform.DOScale(1f, 0.2f));
         seq.AppendCallback(() => Debug.Log($"Refreshed {data.itemName}"));
         return seq;
-    }
-}
-```
-
----
-
-## UI Animation
-
-### UiAnimationBase (Abstract)
-
-**Namespace**: `CherryFramework.UI.UiAnimation`
-
-**Purpose**: Base class for all UI animations.
-
-```csharp
-public abstract class UiAnimationBase : MonoBehaviour
-{
-    [SerializeField] protected float duration = 0.3f;
-    [SerializeField] protected Ease showEasing = Ease.OutQuad;
-    [SerializeField] protected Ease hideEasing = Ease.OutQuad;
-
-    protected RectTransform Target { get; }
-    protected Sequence MainSequence;
-
-    public void Initialize();
-    protected abstract void OnInitialize();   // your subclass MUST implement this
-    public abstract Sequence Show(float delay = 0f);
-    public abstract Sequence Hide(float delay = 0f);
-}
-```
-
-`OnInitialize()` is where an animator captures what it needs (the target
-`RectTransform`, the `CanvasGroup`, the text component). Forgetting to
-override it is a compile error - declaring your own animator without it will
-not build.
-
-### UiAnimationSettings
-
-**Namespace**: `CherryFramework.UI.UiAnimation`
-
-**Purpose**: Configures an animator with delay and launch mode.
-
-```csharp
-[Serializable]
-public class UiAnimationSettings
-{
-    public UiAnimationBase animator;
-    public float delay = 0f;
-    public LaunchMode launchMode;
-}
-```
-
-### LaunchMode
-
-**Namespace**: `CherryFramework.UI.UiAnimation.Enums`
-
-**Purpose**: Determines when an animation plays in a sequence.
-
-| Value                           | Description                                  |
-| ------------------------------- | -------------------------------------------- |
-| `AtGlobalAnimationStart`        | Starts at the beginning of the sequence      |
-| `AtPreviousAnimatorStart`       | Starts at the same time as previous animator |
-| `AfterPreviousAnimatorFinished` | Starts after previous animator completes     |
-
-### Built-in Animators
-
-#### UiFade
-
-```csharp
-[RequireComponent(typeof(CanvasGroup), typeof(RectTransform))]
-public class UiFade : UiAnimationBase
-{
-    // Fades the CanvasGroup alpha
-}
-
-// Usage in inspector:
-// Add to any UI element with CanvasGroup
-```
-
-#### UiScale
-
-```csharp
-[RequireComponent(typeof(RectTransform))]
-public class UiScale : UiAnimationBase
-{
-    [SerializeField] private UiAnimatorEndValueTypes type;
-    [SerializeField] private Vector3 value;
-}
-
-// Scales the RectTransform
-```
-
-#### UiSlide
-
-```csharp
-[RequireComponent(typeof(RectTransform))]
-public class UiSlide : UiAnimationBase
-{
-    [SerializeField] private Vector2 positionDelta;
-    [SerializeField] private bool reverseDirectionOnHide = true;
-}
-
-// Slides based on percentage of element size
-```
-
-#### UiTextFade
-
-```csharp
-[RequireComponent(typeof(RectTransform), typeof(TMP_Text))]
-public class UiTextFade : UiAnimationBase
-{
-    // Fades TMP_Text alpha
-}
-```
-
-#### UiActive
-
-```csharp
-[RequireComponent(typeof(RectTransform))]
-public class UiActive : UiAnimationBase
-{
-    // Simply sets gameObject active/inactive
-}
-```
-
-### Animation Example
-
-```csharp
-public class AnimatedPanel : InteractiveElementBase
-{
-    [SerializeField] private List<UiAnimationSettings> _customAnimations; // Fill in the Editor
-
-    protected override void OnShowStart()
-    {
-        base.OnShowStart();
-        Debug.Log("Panel show started");
-    }
-
-    protected override void OnShowComplete()
-    {
-        base.OnShowComplete();
-        Debug.Log("Panel show completed");
-    }
-
-    public void PlayCustomSequence()
-    {
-        var seq = CreateSequence(_customAnimations, Purpose.Show);
-        seq.Play();
     }
 }
 ```

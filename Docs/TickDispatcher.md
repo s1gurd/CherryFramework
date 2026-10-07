@@ -28,6 +28,48 @@ The CherryFramework TickDispatcher provides a centralized update management syst
 | Mixed update types in single component             | Separate interfaces for Update/LateUpdate/FixedUpdate |
 | No central control over update order               | Ticker manages all updates centrally                  |
 
+### Your First Tickable
+
+Here is the whole system in one class. Derive from `BehaviourBase`, implement
+`ITickable`, and register yourself:
+
+```csharp
+using CherryFramework.BaseClasses;
+using CherryFramework.DependencyManager;
+using CherryFramework.TickDispatcher;
+using UnityEngine;
+
+public class Spinner : BehaviourBase, ITickable
+{
+    [SerializeField] private float _degreesPerSecond = 90f;
+
+    protected override void OnEnable()
+    {
+        base.OnEnable();                 // injects the fields below
+        _ticker.Register(this, 0.1f);    // tick about 10 times per second
+    }
+
+    [Inject] private Ticker _ticker;
+
+    public void Tick(float deltaTime)
+    {
+        transform.Rotate(0f, _degreesPerSecond * deltaTime, 0f);
+    }
+}
+```
+
+Three things to notice:
+
+- **Nothing to unregister.** `BehaviourBase` implements `IUnsubscriber`, so the
+  `Ticker` removes the registration when the object is destroyed.
+- **`deltaTime` is the time since the previous tick**, not `Time.deltaTime`. With
+  a period of `0.1f` it is roughly `0.1`.
+- **The first tick is not immediate.** Registration seeds an internal
+  `LastTick`, so the first `Tick` happens one period later.
+
+If you would rather not use `[Inject]`, get the ticker once in `Start` and call
+`_ticker.Register(this)` from there - just remember to `UnRegister` yourself.
+
 ### Key Features
 
 - **Multiple Update Types**: Support for Update, LateUpdate, and FixedUpdate equivalents
