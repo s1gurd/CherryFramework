@@ -40,7 +40,8 @@ into the Console. `Tools -> CherryFramework -> Run EditMode Tests` runs only
 the fast half.
 
 The editor has to be closed for the command line runs - Unity locks the
-project folder.
+project folder. On this machine Unity 6000.3.25f1 lives in
+`C:\Program Files\Unity\Hub\Editor\6000.3.25f1\Editor\Unity.exe`.
 
 ## Conventions
 

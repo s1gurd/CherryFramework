@@ -103,3 +103,6 @@ InitTestScene*.unity*
 
 # Rider auto-generated project file
 .idea/.idea.CherryFramework/.idea/AndroidProjectSystem.xml
+
+# Test results of a local test run
+/results-*.xml
