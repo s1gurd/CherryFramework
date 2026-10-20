@@ -14,7 +14,8 @@
 10. [Common Issues and Solutions](#common-issues-and-solutions)
 11. [Best Practices](#best-practices)
 12. [Examples](#examples)
-13. [Summary](#summary)
+13. [Tests](#tests)
+14. [Summary](#summary)
 
 ---
 
@@ -1649,6 +1650,17 @@ public class AutoSaveManager : BehaviourBase
     }
 }
 ```
+
+---
+
+## Tests
+
+`Assets/Tests/Framework/SaveGameManagerTests.cs` pins the save system: the
+registration, the save and load round trip, the key format, the slots, the
+forced reset and the deletion.
+
+`Assets/Tests/PlayMode/PersistentObjectTests.cs` pins the persistent object:
+the id it reports, and the error it reports when the guid is missing.
 
 ---
 

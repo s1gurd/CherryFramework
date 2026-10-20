@@ -143,6 +143,34 @@ public class GameInstaller : InstallerBehaviourBase
 declare it, otherwise `Install()` runs in the default order and other objects
 can receive `[Inject]` fields before they are filled.
 
+### Tests
+
+The framework comes with an automated test suite - 140 tests that pin the
+behaviour of the runtime systems. It is the fastest way to tell whether a
+change broke something:
+
+| System | Test file |
+| --- | --- |
+| Dependency injection | `Assets/Tests/Framework/DependencyContainerTests.cs` |
+| State service | `Assets/Tests/Framework/StateServiceTests.cs` |
+| Save system | `Assets/Tests/Framework/SaveGameManagerTests.cs` |
+| Data models | `Assets/Tests/Framework/DataModelTests.cs` |
+| Utilities | `Assets/Tests/Framework/UtilsTests.cs` |
+| Object pool | `Assets/Tests/Framework/SimplePoolTests.cs` |
+| UI navigation | `Assets/Tests/PlayMode/ViewServiceTests.cs` |
+| UI elements | `Assets/Tests/PlayMode/UiElementLifecycleTests.cs` |
+| Dynamic lists | `Assets/Tests/PlayMode/PopulatorTests.cs` |
+| Sound | `Assets/Tests/PlayMode/SoundServiceTests.cs` |
+| MonoBehaviour lifecycle | `Assets/Tests/PlayMode/InstallerBehaviourTests.cs` and friends |
+| Dependency installer | `Assets/Tests/Editor/` |
+
+Run them with `Tools -> CherryFramework -> Run All Tests`, or from the command
+line - both ways are described in [`AGENTS.md`](AGENTS.md).
+
+The tests live in the repository, not in the distributed framework folder: a
+project that copies `Assets/CherryFramework` does not get them. Every system
+document in `Docs/` points at the test file that pins its behaviour.
+
 ---
 
 ## Working with AI assistance
@@ -157,11 +185,10 @@ assistant, and a few of them are deliberate.
 | **One registration file** | every service and its constructor signature sits in a single `InstallerBehaviourBase.Install()` |
 | **Uniform base classes** | four bases plus `[Inject]` and `[SaveGameData]` - a small, repeatable set of patterns |
 
-**The caveat, stated plainly:** the runtime systems have no automated tests. The
-dependency installer has them, the framework itself does not - a clean compile
-is as far as the framework takes you, and nothing will catch a regression in it
-later. An installer's `[SerializeField]` references are invisible to the
-compiler too - one left unassigned stays `null` and throws at runtime, not
+**The caveat, stated plainly:** the runtime systems are covered by automated
+tests - 140 of them, see [Tests](#tests). What the tests cannot see is an
+installer's `[SerializeField]` references: they are invisible to the
+compiler, so one left unassigned stays `null` and throws at runtime, not
 at build time.
 
 ---

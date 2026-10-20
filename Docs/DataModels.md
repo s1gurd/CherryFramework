@@ -1322,6 +1322,14 @@ public class ProfileUI : BehaviourBase
 
 ---
 
+## Tests
+
+`Assets/Tests/Framework/DataModelTests.cs` pins the models: the accessor
+values, the downward bindings and their activation modes, the value
+processors, the singleton and the transient models and the storage round trip.
+
+---
+
 ## Summary
 
 | Component         | Purpose                  | Key Features                              |

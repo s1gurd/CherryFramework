@@ -10,7 +10,29 @@ namespace CherryFramework.Utils
 {
     public static class ViewUtils
     {
-        public static Type GetPresenterType(string typeString) => Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(t => t.Name.Equals(typeString) &&t.BaseType == typeof(PresenterBase));
+        /// <summary>
+        /// Finds a presenter by its type name. The search runs over every loaded
+        /// assembly, so a presenter that lives in the game code is found as
+        /// well, and a presenter that derives from an intermediate base class
+        /// counts too.
+        /// </summary>
+        public static Type GetPresenterType(string typeString) => AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(GetTypesSafe)
+            .FirstOrDefault(type => type.Name.Equals(typeString, StringComparison.Ordinal)
+                                     && typeof(PresenterBase).IsAssignableFrom(type)
+                                     && !type.IsAbstract);
+
+        private static IEnumerable<Type> GetTypesSafe(Assembly assembly)
+        {
+            try
+            {
+                return assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException exception)
+            {
+                return exception.Types.Where(type => type != null);
+            }
+        }
 
         public static void DebugLogPath(this List<PresenterBase> list)
         {

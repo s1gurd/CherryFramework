@@ -13,7 +13,8 @@
 9. [Common Issues and Solutions](#common-issues-and-solutions)
 10. [Best Practices](#best-practices)
 11. [Examples](#examples)
-12. [Summary](#summary)
+12. [Tests](#tests)
+13. [Summary](#summary)
 
 ---
 
@@ -367,6 +368,28 @@ DependencyContainer.Instance.BindAsSingleton(viewService);
 
 ### Navigation Methods
 
+#### PopView (by type name)
+
+```csharp
+public Sequence PopView(string typeString, PresenterBase mountingPoint = null, bool skipAnimation = false, Accessor<bool> readyAccessor = null)
+```
+
+The name is resolved to a type over **every loaded assembly**, so a presenter
+that lives in the game code is found as well. A type counts when it derives
+from `PresenterBase` - directly or through an intermediate base class like
+`PresenterLoadingBase` - and is not abstract. The name has to match the type
+name exactly, including the namespace is not needed.
+
+If no presenter matches, the call is refused with an error and nothing
+changes.
+
+**Example**:
+
+```csharp
+// The type name, not the full name
+_viewService.PopView("SettingsPresenter");
+```
+
 #### PopView (by type)
 
 ```csharp
@@ -490,6 +513,16 @@ public class GameUI : MonoBehaviour
     }
 }
 ```
+
+`OnAnyViewBecameActive` is **not** a per screen event. It is raised once, when
+the navigation goes from no view to a view - the moment the UI appears.
+Opening a second screen on top of the first one raises nothing, and neither
+does going back to a screen that is already open.
+`OnAllViewsBecameInactive` is raised when the last view is closed and the
+navigation is empty again.
+
+A screen that has to react to its own opening overrides `ShowFrom` instead,
+see [React to the active view](#6-react-to-the-active-view).
 
 ---
 
@@ -1308,7 +1341,29 @@ the current view **and clears the whole navigation history**, leaving
 `IsLastView` true again - use it for "return to the start", not for closing a
 dialog.
 
-### 6. Use ViewService Events for Global UI Logic
+### 6. React to the Active View
+
+`OnAnyViewBecameActive` is raised once, when the navigation goes from no view
+to a view. It is the "the UI appeared" signal, not a "the screen changed"
+signal - opening a second screen on top of the first one raises nothing.
+
+A screen that has to react to its own opening overrides `ShowFrom`:
+
+```csharp
+public class SettingsPresenter : PresenterBase
+{
+    [Inject] private SoundService _sound;
+
+    public override DG.Tweening.Sequence ShowFrom(PresenterBase previous, bool skipAnimation = false)
+    {
+        _sound.Play("ui_settings_open");
+        return base.ShowFrom(previous, skipAnimation);
+    }
+}
+```
+
+Global logic that has to know which view is on top reads `ActiveView` and
+compares it with the one it saw last:
 
 ```csharp
 public class UISoundManager : MonoBehaviour
@@ -1316,14 +1371,14 @@ public class UISoundManager : MonoBehaviour
     [Inject] private ViewService _viewService;
     [Inject] private SoundService _sound;
 
-    private void Start()
-    {
-        _viewService.OnAnyViewBecameActive += OnViewChanged;
-    }
+    private PresenterBase _lastView;
 
-    private void OnViewChanged()
+    private void Update()
     {
         var view = _viewService.ActiveView;
+
+        if (view == _lastView) return;
+        _lastView = view;
 
         if (view is SettingsPresenter)
             _sound.Play("ui_settings_open");
@@ -1607,6 +1662,18 @@ public class GameController : MonoBehaviour
     }
 }
 ```
+
+---
+
+## Tests
+
+`Assets/Tests/PlayMode/ViewServiceTests.cs` pins the navigation: the history,
+the active view, the modal block, the error paths and the loading screen.
+
+`Assets/Tests/PlayMode/UiElementLifecycleTests.cs` pins the elements: the
+initialisation of a presenter and the states of a widget.
+
+`Assets/Tests/PlayMode/PopulatorTests.cs` pins the dynamic lists.
 
 ---
 

@@ -13,7 +13,8 @@
 9. [Common Issues and Solutions](#common-issues-and-solutions)
 10. [Best Practices](#best-practices)
 11. [Examples](#examples)
-12. [Summary](#summary)
+12. [Tests](#tests)
+13. [Summary](#summary)
 
 ---
 
@@ -1794,6 +1795,14 @@ public class TutorialSystem : BehaviourBase
     private void HideShootPrompt() => _shootPrompt.SetActive(false);
 }
 ```
+
+---
+
+## Tests
+
+`Assets/Tests/Framework/StateServiceTests.cs` pins the service: the lifetime
+of the events and the statuses, the payload events, the conditional
+subscriptions, the one-shot subscriptions and the unsubscription.
 
 ---
 

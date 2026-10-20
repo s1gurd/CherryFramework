@@ -331,4 +331,10 @@ Bindings.CreateBinding(
 );
 ```
 
- 
+## Tests
+
+`Assets/Tests/PlayMode/InjectMonoBehaviourTests.cs` pins the behaviour of the
+base classes: the injection on enable and the cleanup on destroy.
+
+---
+
