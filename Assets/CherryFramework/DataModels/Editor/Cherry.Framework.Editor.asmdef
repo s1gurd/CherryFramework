@@ -2,7 +2,7 @@
     "name": "Cherry.Framework.Editor",
     "rootNamespace": "",
     "references": [
-        "GUID:81d29a5e4682947dfa73ba6bd09fe0be"
+        "AnnulusGames.UnityCodeGen.Editor"
     ],
     "includePlatforms": [
         "Editor"
