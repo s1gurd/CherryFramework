@@ -276,7 +276,10 @@ namespace CherryFramework.UI.Views
                         lastItem = path[i];
                     }
                 }
-                
+
+                // The view we return to is the active one from now on.
+                ActiveView = lastItem;
+
                 return current.Last().HideTo(lastItem, skipAnimation);
             }
             else
@@ -284,18 +287,33 @@ namespace CherryFramework.UI.Views
                 DebugHistory("History back to clear screen");
                 ActiveView = null;
                 _history.Clear();
-                return current.Last().HideTo(null, skipAnimation).AppendCallback(()  => OnAllViewsBecameInactive.Invoke());
+                return HideCurrentView(current.Last(), skipAnimation);
             }
         }
 
         public Sequence HideAndReset(bool skipAnimation = false)
         {
             if (_history.Count < 1) return DOTween.Sequence();
-            
+
             var current = _history.Pop();
             ActiveView = null;
             _history.Clear();
-            return current.Last().HideTo(null, skipAnimation).AppendCallback(()  => OnAllViewsBecameInactive.Invoke());
+            return HideCurrentView(current.Last(), skipAnimation);
+        }
+
+        private Sequence HideCurrentView(PresenterBase view, bool skipAnimation)
+        {
+            var sequence = view.HideTo(null, skipAnimation);
+
+            if (skipAnimation)
+            {
+                // HideTo completed the sequence, a callback appended to a
+                // completed sequence never runs, so the event is raised here.
+                OnAllViewsBecameInactive.Invoke();
+                return sequence;
+            }
+
+            return sequence.AppendCallback(() => OnAllViewsBecameInactive.Invoke());
         }
 
         private void DebugHistory(string msg)

@@ -11,7 +11,7 @@ namespace CherryFramework.UI.InteractiveElements
     public abstract class InteractiveElementBase : BehaviourBase
     {
         [Header("Animation Settings")] [SerializeField]
-        protected List<UiAnimationSettings> animators;
+        protected List<UiAnimationSettings> animators = new();
 
         protected Sequence CreateSequence(List<UiAnimationSettings> anims, Purpose purpose)
         {
