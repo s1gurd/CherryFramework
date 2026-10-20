@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using CherryFramework.DependencyManager;
 using CherryFramework.Tests.Fakes;
@@ -238,6 +239,34 @@ namespace CherryFramework.PlayMode.Tests
             yield return null;
 
             Assert.AreSame(_hierarchy.Root.LoadingScreen, _viewService.ActiveView);
+        }
+
+        [UnityTest]
+        public IEnumerator PopView_WithSkippedAnimation_DoesNotWarnAboutACompletedTween()
+        {
+            var warnings = new List<string>();
+
+            Application.LogCallback handler = (condition, stackTrace, type) =>
+            {
+                if (type == LogType.Warning)
+                    warnings.Add(condition);
+            };
+
+            Application.logMessageReceived += handler;
+
+            try
+            {
+                var view = _hierarchy.AddChild<TestPresenter>();
+                _viewService.PopView(view, skipAnimation: true);
+
+                yield return null;
+            }
+            finally
+            {
+                Application.logMessageReceived -= handler;
+            }
+
+            Assert.IsEmpty(warnings, string.Join("\n", warnings));
         }
     }
 }

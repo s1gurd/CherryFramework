@@ -71,6 +71,9 @@ next to their templates, and the runtime bugs that the tests found.
   required an exact base class, so a presenter of the game code, or one
   deriving from `PresenterLoadingBase`, was never found by name.
 - `ViewService.PopView` dropped the `readyAccessor` instead of forwarding it.
+- `ViewService.PopView` added the show sequence to the view sequence even when
+  the animation was skipped. The show sequence was completed by then, and
+  DOTween warns that an inactive tween cannot be added to a sequence.
 - `Ticker.UnRegister` removed the object from the first registered phase only,
   and `Ticker.checkActivity` looked the object up under a different key than
   the one it was stored with.

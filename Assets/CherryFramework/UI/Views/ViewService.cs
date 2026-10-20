@@ -222,7 +222,17 @@ namespace CherryFramework.UI.Views
             }
             
             ActiveView = newView;
-            seq.Insert(0, newView.ShowFrom(current?.Last(), skipAnimation));
+
+            // The show sequence is completed right away when the animation is
+            // skipped, and DOTween does not add a completed tween to a
+            // sequence. The show is already applied in that case.
+            var showSequence = newView.ShowFrom(current?.Last(), skipAnimation);
+
+            if (showSequence.IsActive())
+            {
+                seq.Insert(0, showSequence);
+            }
+
             return seq;
         }
 
