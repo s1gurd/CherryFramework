@@ -279,13 +279,33 @@ namespace CherryFramework.StateService
         {
             subscriber ??= subscription.Callback.Target;
 
-            if (!_subscriptions.TryGetValue(subscriber, out var subscriptionList)) return;
+            // A subscription that was added in this tick still waits in
+            // _newSubscriptions, so it has to be removed from both lists.
+            RemoveSubscriptionFrom(_subscriptions, subscriber, subscription);
+            RemoveSubscriptionFrom(_newSubscriptions, subscriber, subscription);
+        }
+
+        private static void RemoveSubscriptionFrom(
+            Dictionary<object, List<StateSubscription>> source,
+            object subscriber,
+            StateSubscription subscription)
+        {
+            if (!source.TryGetValue(subscriber, out var subscriptionList)) return;
             subscriptionList.Remove(subscription);
         }
 
         public void RemoveAllSubscriptions(object subscriber)
         {
             _subscribersToRemove.Add(subscriber);
+
+            // The pending subscriptions of this subscriber have to go as well,
+            // otherwise they are moved into _subscriptions on the next tick and
+            // the callback runs although it was unsubscribed.
+            if (_newSubscriptions.TryGetValue(subscriber, out var pending))
+            {
+                pending.Clear();
+                _newSubscriptions.Remove(subscriber);
+            }
         }
 
         private class BasicEvent : EventBase
