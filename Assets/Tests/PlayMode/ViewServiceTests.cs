@@ -14,6 +14,7 @@ namespace CherryFramework.PlayMode.Tests
     {
         private UiTestHierarchy _hierarchy;
         private ViewService _viewService;
+        private TestLoadingPresenter _loadingScreen;
 
         [SetUp]
         public void SetUp()
@@ -22,8 +23,8 @@ namespace CherryFramework.PlayMode.Tests
 
             // The view service reads the loading screen from the root, so it
             // has to be in place before the service is created.
-            var loading = _hierarchy.AddChild<TestLoadingPresenter>();
-            _hierarchy.SetLoadingScreen(loading);
+            _loadingScreen = _hierarchy.AddChild<TestLoadingPresenter>();
+            _hierarchy.SetLoadingScreen(_loadingScreen);
 
             _viewService = new ViewService(_hierarchy.Root, false);
 
@@ -174,6 +175,28 @@ namespace CherryFramework.PlayMode.Tests
             _viewService.PopView("ThereIsNoSuchPresenter", skipAnimation: true);
 
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator PopView_ByTypeName_FindsThePresenter()
+        {
+            var view = _hierarchy.AddChild<TestPresenter>();
+
+            _viewService.PopView(nameof(TestPresenter), skipAnimation: true);
+
+            yield return null;
+
+            Assert.AreSame(view, _viewService.ActiveView);
+        }
+
+        [UnityTest]
+        public IEnumerator PopView_ByTypeName_FindsAPresenterWithAnIntermediateBaseClass()
+        {
+            _viewService.PopView(nameof(TestLoadingPresenter), skipAnimation: true);
+
+            yield return null;
+
+            Assert.AreSame(_loadingScreen, _viewService.ActiveView);
         }
 
         [UnityTest]
