@@ -1,9 +1,11 @@
+using System.IO;
 using System.Text;
+using System.Xml;
 using UnityEditor;
 using UnityEditor.TestTools.TestRunner.Api;
 using UnityEngine;
 
-namespace Cherry.Framework.Tests
+namespace CherryFramework.Tests
 {
     /// <summary>
     /// Runs the whole suite and prints a summary per run. The Test Runner
@@ -17,6 +19,7 @@ namespace Cherry.Framework.Tests
 
         private const string EditModeSummaryKey = "CherryFramework.EditModeSummary";
         private const string FailuresKey = "CherryFramework.Failures";
+        private const string PlayModeRunKey = "CherryFramework.PlayModeRun";
 
         [MenuItem(EditModeMenu, false, 50)]
         public static void RunEditMode() => Start(false);
@@ -29,6 +32,91 @@ namespace Cherry.Framework.Tests
             var api = ScriptableObject.CreateInstance<TestRunnerApi>();
             api.RegisterCallbacks(new RunnerCallbacks(api, withPlayMode));
             api.Execute(new ExecutionSettings(new Filter { testMode = TestMode.EditMode }));
+        }
+
+        /// <summary>
+        /// The play mode run reloads the domain, which destroys the callbacks
+        /// the test runner was given. The final report is therefore written
+        /// once the editor is back in edit mode.
+        /// </summary>
+        [InitializeOnLoadMethod]
+        private static void WatchForTheFinishedPlayModeRun()
+        {
+            EditorApplication.playModeStateChanged += state =>
+            {
+                if (state != PlayModeStateChange.EnteredEditMode) return;
+                if (!SessionState.GetBool(PlayModeRunKey, false)) return;
+
+                SessionState.EraseBool(PlayModeRunKey);
+
+                var editModeSummary = SessionState.GetString(EditModeSummaryKey, "");
+                SessionState.EraseString(EditModeSummaryKey);
+
+                var failures = SessionState.GetString(FailuresKey, "");
+                SessionState.EraseString(FailuresKey);
+
+                if (!string.IsNullOrEmpty(editModeSummary))
+                {
+                    Debug.Log("[CherryFramework] " + editModeSummary);
+                }
+
+                if (!string.IsNullOrEmpty(failures))
+                {
+                    Debug.Log("[CherryFramework] Failures:\n" + failures);
+                }
+
+                Debug.Log("[CherryFramework] " + ReadResultsSummary());
+                Debug.Log("[CherryFramework] The test run is finished.");
+            };
+        }
+
+        private static string ReadResultsSummary()
+        {
+            var path = Path.Combine(Application.persistentDataPath, "TestResults.xml");
+
+            if (!File.Exists(path))
+            {
+                return "The play mode results were not found at " + path;
+            }
+
+            try
+            {
+                var document = new XmlDocument();
+                document.Load(path);
+
+                var root = document.DocumentElement;
+
+                if (root == null)
+                {
+                    return "The play mode results are empty.";
+                }
+
+                var builder = new StringBuilder();
+                builder.Append("PlayMode - passed: ").Append(root.GetAttribute("passed"));
+                builder.Append(", failed: ").Append(root.GetAttribute("failed"));
+                builder.Append(", skipped: ").Append(root.GetAttribute("skipped"));
+                builder.Append(", inconclusive: ").Append(root.GetAttribute("inconclusive"));
+                builder.Append(", total: ").Append(root.GetAttribute("total"));
+                builder.Append(" (").Append(path).Append(")");
+
+                var failed = root.SelectNodes("//test-case[@result='Failed']");
+
+                if (failed != null && failed.Count > 0)
+                {
+                    builder.Append("\n[CherryFramework] Failed play mode tests:");
+
+                    foreach (XmlNode node in failed)
+                    {
+                        builder.Append("\n  ").Append(node.Attributes?["fullname"]?.Value);
+                    }
+                }
+
+                return builder.ToString();
+            }
+            catch (System.Exception exception)
+            {
+                return "The play mode results could not be read: " + exception.Message;
+            }
         }
 
         private class RunnerCallbacks : ICallbacks
@@ -86,12 +174,17 @@ namespace Cherry.Framework.Tests
                 {
                     _playModeStarted = true;
                     SessionState.SetString(EditModeSummaryKey, summary);
+                    SessionState.SetBool(PlayModeRunKey, true);
                     _api.Execute(new ExecutionSettings(new Filter { testMode = TestMode.PlayMode }));
                     return;
                 }
 
+                // The play mode run reloads the domain, so this branch is only
+                // reached when the editor stays in one domain. The report is
+                // written by the play mode watcher in that case as well.
                 var editModeSummary = SessionState.GetString(EditModeSummaryKey, "");
                 SessionState.EraseString(EditModeSummaryKey);
+                SessionState.EraseBool(PlayModeRunKey);
 
                 Report(editModeSummary, SessionState.GetString(FailuresKey, ""));
                 SessionState.EraseString(FailuresKey);
