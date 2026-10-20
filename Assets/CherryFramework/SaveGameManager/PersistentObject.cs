@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using DG.Tweening;
 using EditorAttributes;
@@ -32,7 +32,7 @@ namespace CherryFramework.SaveGameManager
         [SerializeField] private bool forceReset;
         
         [Inject] private readonly SaveGameManager _saveGame;
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
         
         [SaveGameData] protected Vector3 _position;
         [SaveGameData] protected Quaternion _rotation;

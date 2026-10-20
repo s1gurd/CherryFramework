@@ -1,4 +1,4 @@
-﻿namespace CherryFramework.DataModels
+﻿namespace CherryFramework.ModelService
 {
     public enum BindingActivation
     {

@@ -1,4 +1,4 @@
-﻿namespace CherryFramework.DataModels.ModelDataStorageBridges
+﻿namespace CherryFramework.ModelService.ModelDataStorageBridges
 {
     public enum ReadyMode
     {

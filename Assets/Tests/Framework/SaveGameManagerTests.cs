@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using CherryFramework.DataModels;
-using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.ModelService;
+using CherryFramework.ModelService.ModelDataStorageBridges;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.Tests.Fakes;
@@ -17,7 +17,7 @@ namespace CherryFramework.Tests
 
         private FakePlayerPrefs _playerPrefs;
         private SaveGameManagerService _saveGameManager;
-        private ModelService _modelService;
+        private DataModelService _modelService;
         private PersistentObject _persistentObject;
         private GameObject _gameObject;
 
@@ -26,7 +26,7 @@ namespace CherryFramework.Tests
         {
             _playerPrefs = new FakePlayerPrefs();
             _saveGameManager = new SaveGameManagerService(_playerPrefs, false);
-            _modelService = new ModelService(new PlayerPrefsBridge(_playerPrefs), false);
+            _modelService = new DataModelService(new PlayerPrefsBridge(_playerPrefs), false);
 
             // PersistentObject injects both of them. They are bound so that
             // the component never logs an injection error, no matter whether
@@ -43,7 +43,7 @@ namespace CherryFramework.Tests
         {
             TestGameObjects.Destroy(_gameObject);
             DependencyContainer.Instance.RemoveDependency(typeof(SaveGameManagerService));
-            DependencyContainer.Instance.RemoveDependency(typeof(ModelService));
+            DependencyContainer.Instance.RemoveDependency(typeof(DataModelService));
         }
 
         [Test]

@@ -1,5 +1,5 @@
 ﻿using System;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 
 namespace CherryFramework.BaseClasses

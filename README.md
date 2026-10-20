@@ -67,7 +67,7 @@ are independent:
 
 | Service                 | How to set it                | What it prints |
 | ----------------------- | ---------------------------- | -------------- |
-| `ModelService`          | `new ModelService(bridge, debugMessages)` | every model load / save / remove, with key and JSON |
+| `DataModelService`          | `new DataModelService(bridge, debugMessages)` | every model load / save / remove, with key and JSON |
 | `SaveGameManager`       | `new SaveGameManager(prefs, debugMessages)` | every component load / save, with key and JSON |
 | `ViewService`           | `new ViewService(root, debugMessages)` | the navigation history on each push/pop |
 | `StateService`          | `new StateService(debugMessages)` | every emitted event, status change and subscription run |
@@ -282,15 +282,15 @@ Models use their own key namespace, so their lines are easy to tell apart from
 `SaveGameManager`'s in the same trace:
 
 ```
-[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-GeneratedDataModels.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
-[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStatisticsModel with content: {..., "TriesNum":6}
+[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-Sample.DataModels.generated.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
+[Model Service - PlayerPrefs] Saved model SINGLETON-Sample.DataModels.generated.GameStatisticsModel with content: {..., "TriesNum":6}
 ```
 
 A model that was never written gets its own line instead of the load one, and
 that is normal on a first Play:
 
 ```
-[Model Service - PlayerPrefs] NOT FOUND model by key: SINGLETON-GeneratedDataModels.GameStateDataModel in PlayerPrefs
+[Model Service - PlayerPrefs] NOT FOUND model by key: SINGLETON-Sample.DataModels.generated.GameStateDataModel in PlayerPrefs
 ```
 
 Whether a miss leaves the model at its defaults depends on the `ReadyMode` you
@@ -313,10 +313,10 @@ Sample decides what to clear on quit. `GameManager.OnApplicationQuit` deletes
 
 **Before you edit a data template, know the generator.** Models are generated,
 never written by hand: a `PlayerDataModel` that looks hand-written above is
-produced from a `*.DataModels.Templates` class. If you change a template, run
-**`Tools → UnityCodeGen → Generate`** - the whole
-`Assets/Scripts/GeneratedDataModels/` folder is deleted and rebuilt, so any
-edit made directly inside it is lost. Details in
+produced from a `*.DataModels` class. If you change a template, run
+**`Tools → UnityCodeGen → Generate`** - the model is written into the
+`generated` folder next to its template, so any edit made directly inside
+that folder is lost. Details in
 [Code Generation](Docs/DataModels.md#code-generation).
 
 **Example**:
@@ -683,10 +683,10 @@ All framework components derive from these foundational classes:
 
 ```csharp
 using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.StateService;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 
 // Plain C# class (not a MonoBehaviour). InjectClass fills the [Inject] fields
 // before the constructor body runs; Dispose() fires the cleanup callbacks.
@@ -767,8 +767,8 @@ This is the full installer. A minimal four-line version is shown earlier, in
 [Installing into your own project](#installing-into-your-own-project).
 
 ```csharp
-using CherryFramework.DataModels;
-using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.ModelService;
+using CherryFramework.ModelService.ModelDataStorageBridges;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.SoundService;
@@ -792,13 +792,13 @@ public class ProjectInstaller : InstallerBehaviourBase
     protected override void Install()
     {
         // One shared IPlayerPrefs instance for both save systems, so a value
-        // written by SaveGameManager and by ModelService lands in the same store
+        // written by SaveGameManager and by DataModelService lands in the same store
         var playerPrefs = new PlayerPrefsData();
 
         BindAsSingleton(new Ticker());
         BindAsSingleton(new StateService(true));
         BindAsSingleton(new SaveGameManager(playerPrefs, true));
-        BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), true));
+        BindAsSingleton(new DataModelService(new PlayerPrefsBridge(playerPrefs), true));
 
         BindAsSingleton(new ViewService(_rootUI, true));
         BindAsSingleton(new SoundService(_audioSettings, _audioCollections));
@@ -811,7 +811,7 @@ public class ProjectInstaller : InstallerBehaviourBase
 ```csharp
 public class Player : BehaviourBase, IGameSaveData
 {
-    [Inject] private ModelService _modelService;
+    [Inject] private DataModelService _modelService;
     [Inject] private SoundService _audio;
     [Inject] private StateService _state;
     [Inject] private SaveGameManager _saveManager;

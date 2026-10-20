@@ -1,10 +1,10 @@
 using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.StateService;
 using CherryFramework.TickDispatcher;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using Sample.Settings;
 using UnityEngine;
 
@@ -19,7 +19,7 @@ namespace Sample
     public class Obstacle : BehaviourBase, ITickable
     {
         [Inject] protected readonly StateService StateService;
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
         [Inject] private readonly Ticker _ticker;
         [Inject] private readonly Camera _camera;
     

@@ -4,7 +4,7 @@ using CherryFramework.Utils.PlayerPrefsWrapper;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace CherryFramework.DataModels.ModelDataStorageBridges
+namespace CherryFramework.ModelService.ModelDataStorageBridges
 {
 	public class PlayerPrefsBridge : ModelDataStorageBridgeBase
     {

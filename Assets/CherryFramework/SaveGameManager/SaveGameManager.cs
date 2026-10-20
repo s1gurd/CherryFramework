@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.Utils;
 using CherryFramework.Utils.PlayerPrefsWrapper;
 using Newtonsoft.Json;
@@ -122,7 +122,7 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(field.FieldType))
                 {
-                    Debug.LogError($"[Save Game Manager] \"{field.FieldType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.RegisterModelInStorage)} instead.");
+                    Debug.LogError($"[Save Game Manager] \"{field.FieldType}\" Data models are not supported by Save Game Manager! Use {nameof(DataModelService.DataStorage.RegisterModelInStorage)} instead.");
                 }
             }
 
@@ -130,7 +130,7 @@ namespace CherryFramework.SaveGameManager
             {
                 if (typeof(DataModelBase).IsAssignableFrom(prop.PropertyType))
                 {
-                    Debug.LogError($"[Save Game Manager] \"{prop.PropertyType}\" Data models are not supported by Save Game Manager! Use {nameof(ModelService.DataStorage.RegisterModelInStorage)} instead.");
+                    Debug.LogError($"[Save Game Manager] \"{prop.PropertyType}\" Data models are not supported by Save Game Manager! Use {nameof(DataModelService.DataStorage.RegisterModelInStorage)} instead.");
                 }
             }
             

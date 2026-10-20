@@ -1,5 +1,5 @@
-using CherryFramework.DataModels;
-using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.ModelService;
+using CherryFramework.ModelService.ModelDataStorageBridges;
 using CherryFramework.Tests.Fakes;
 using NUnit.Framework;
 
@@ -8,13 +8,13 @@ namespace CherryFramework.Tests
     public class DataModelTests
     {
         private FakePlayerPrefs _playerPrefs;
-        private ModelService _modelService;
+        private DataModelService _modelService;
 
         [SetUp]
         public void SetUp()
         {
             _playerPrefs = new FakePlayerPrefs();
-            _modelService = new ModelService(new PlayerPrefsBridge(_playerPrefs), false);
+            _modelService = new DataModelService(new PlayerPrefsBridge(_playerPrefs), false);
         }
 
         [Test]

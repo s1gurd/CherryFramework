@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace CherryFramework.DataModels.ModelDataStorageBridges
+namespace CherryFramework.ModelService.ModelDataStorageBridges
 {
     public abstract class ModelDataStorageBridgeBase
     {

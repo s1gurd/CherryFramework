@@ -40,7 +40,7 @@ The CherryFramework SaveGameManager provides a comprehensive save game system th
 - Game objects must have a `PersistentObject` component to be saveable
 - Components must implement `IGameSaveData` - it is a required constraint on`n  `SaveData<T>` / `LoadData<T>`. The four callbacks are optional: each one has an`n  empty default body, so you only override the ones you need
 - Marked fields/properties must be serializable
-- Data Models (`DataModelBase`) should use `ModelService` instead of SaveGameManager
+- Data Models (`DataModelBase`) should use `DataModelService` instead of SaveGameManager
 - Scene objects require a guid — press **Fill Guid** in the `PersistentObject` inspector
 
 ---
@@ -770,7 +770,7 @@ public class BatchedSaver : BehaviourBase
 ```
 
 If one save is simply too slow, the usual fix is to save less: persist
-only what changed, or move large payloads to `ModelService`.
+only what changed, or move large payloads to `DataModelService`.
 
 ### Custom storage
 
@@ -956,7 +956,7 @@ public void OnAfterLoad()
 
 **Symptoms**: Using SaveGameManager with DataModelBase
 
-**Cause**: Data models should use ModelService
+**Cause**: Data models should use DataModelService
 
 **Solution**:
 
@@ -964,9 +964,9 @@ public void OnAfterLoad()
 // WRONG
 public class PlayerModel : DataModelBase, IGameSaveData { }
 
-// RIGHT - Use ModelService
+// RIGHT - Use DataModelService
 var bridge = new PlayerPrefsBridge(new PlayerPrefsData());
-var modelService = new ModelService(bridge, true);
+var modelService = new DataModelService(bridge, true);
 var playerModel = modelService.GetOrCreateSingletonModel<PlayerModel>();
 bridge.RegisterModelInStorage(playerModel);
 ```
@@ -1737,7 +1737,7 @@ the id it reports, and the error it reports when the guid is missing.
 | 5   | **Each spawnable copy needs a unique suffix**                                      | Prevents data conflicts between identical objects         |
 | 6   | **Components must implement IGameSaveData**                                        | Required constraint on SaveData/LoadData; callbacks optional |
 | 7   | **Mark fields with [SaveGameData]**                                                | Only marked fields are persisted                          |
-| 8   | **Data models should use ModelService**                                            | SaveGameManager is for MonoBehaviour components           |
+| 8   | **Data models should use DataModelService**                                            | SaveGameManager is for MonoBehaviour components           |
 | 9   | **Default storage is synchronous**                                                 | Can cause frame drops with large save files               |
 | 10  | **Do not move saving to a background thread**                                        | PlayerPrefs, Debug.Log and reflection are not thread-safe |
 
@@ -1748,11 +1748,11 @@ the id it reports, and the error it reports when the guid is missing.
 | Small      | < 100KB        | Synchronous (default)              |
 | Medium     | 100KB - 1MB    | Depends on save frequency          |
 | Large      | > 1MB          | Synchronous, batched over frames    |
-| Very Large | > 10MB         | Batched over frames, or move to ModelService |
+| Very Large | > 10MB         | Batched over frames, or move to DataModelService |
 
 ### When to Use SaveGameManager
 
-| Use SaveGameManager      | Use ModelService              |
+| Use SaveGameManager      | Use DataModelService              |
 | ------------------------ | ----------------------------- |
 | MonoBehaviour components | DataModelBase-derived classes |
 | Transform positions      | Game settings                 |

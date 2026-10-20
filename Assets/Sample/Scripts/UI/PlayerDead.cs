@@ -1,9 +1,9 @@
-﻿using CherryFramework.DataModels;
+﻿using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.UI.InteractiveElements.Presenters;
 using CherryFramework.UI.Views;
 using DG.Tweening;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -22,7 +22,7 @@ namespace Sample.UI
         [SerializeField] private TMP_Text resultTxt;
         
         [Inject] private readonly GameManager _gameManager;
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
 
         private GameStateDataModel _gameState;
         private string _resultTemplate;

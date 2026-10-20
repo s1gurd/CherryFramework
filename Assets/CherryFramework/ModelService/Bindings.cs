@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CherryFramework.DataModels
+namespace CherryFramework.ModelService
 {
     public class Bindings
     {

@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The data models of the framework live in `CherryFramework.ModelService`
+  now.** The namespace `CherryFramework.DataModels` is gone, so the class
+  `ModelService` is now `DataModelService`
+  (`CherryFramework.ModelService.DataModelService`) and the storage bridges
+  live in `CherryFramework.ModelService.ModelDataStorageBridges`.
+- **The generated models are placed next to their templates.** The model of a
+  template goes into the `generated` folder of the folder the template file
+  was found in, and its namespace is the namespace of the template with a
+  `generated` suffix. The namespace of a template has to end with `DataModels`.
+- The `using` statements of the generated models changed with it. The key a
+  model is stored under in `PlayerPrefs` carries the namespace of the model,
+  so the data of the old keys is not found anymore.
+- The generator no longer deletes the folder it writes to. It removes only the
+  models of the templates that are gone, so the guids of the models that stay
+  do not change on every run.
+
+### Removed
+
+- The folder `Assets/Scripts/GeneratedDataModels` and the demo template
+  `ExampleData` of the framework. The Sample shows how a template is written.
+
 ## [1.1] - 2026-10-20
 
 The dependency installer, an automated test suite for the runtime, the binding
@@ -34,8 +59,8 @@ activation modes of the data models, and the runtime bugs that the tests found.
   ready yet no longer delivers values to the handlers that wait for it.
 - **Data models: `ReadyMode`** and the `Ready` flag with `ReadyAccessor`, plus
   the `OnReady` callbacks that are flushed when the model becomes ready.
-- **Data models: transient models.** `ModelService.GetOrCreateTransientModel<T>(id)`
-  and `ModelService.ReleaseTransientModel(...)` for models that belong to one
+- **Data models: transient models.** `DataModelService.GetOrCreateTransientModel<T>(id)`
+  and `DataModelService.ReleaseTransientModel(...)` for models that belong to one
   object instead of to the whole project.
 - **Save system: `UnRegister<T>`, `UnRegisterObject` and `SaveDataForObject`**
   on the `SaveGameManager`.

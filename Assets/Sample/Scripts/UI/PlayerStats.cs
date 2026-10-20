@@ -1,7 +1,7 @@
-﻿using CherryFramework.DataModels;
+﻿using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.UI.InteractiveElements.Presenters;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,7 +18,7 @@ namespace Sample.UI
         [SerializeField] private Button okayBtn;
         [SerializeField] private TMP_Text statTxt;
         
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
 
         private GameStateDataModel _gameState;
         private GameStatisticsModel _gameStatistics;

@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Text.RegularExpressions;
-using CherryFramework.DataModels;
-using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.ModelService;
+using CherryFramework.ModelService.ModelDataStorageBridges;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.Tests.Fakes;
@@ -25,7 +25,7 @@ namespace CherryFramework.PlayMode.Tests
             // before the component is created.
             var playerPrefs = new FakePlayerPrefs();
             DependencyContainer.Instance.BindAsSingleton(new SaveGameManagerService(playerPrefs, false));
-            DependencyContainer.Instance.BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), false));
+            DependencyContainer.Instance.BindAsSingleton(new DataModelService(new PlayerPrefsBridge(playerPrefs), false));
         }
 
         [TearDown]
@@ -41,9 +41,9 @@ namespace CherryFramework.PlayMode.Tests
                 DependencyContainer.Instance.RemoveDependency(typeof(SaveGameManagerService));
             }
 
-            if (DependencyContainer.Instance.HasDependency<ModelService>())
+            if (DependencyContainer.Instance.HasDependency<DataModelService>())
             {
-                DependencyContainer.Instance.RemoveDependency(typeof(ModelService));
+                DependencyContainer.Instance.RemoveDependency(typeof(DataModelService));
             }
         }
 

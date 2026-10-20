@@ -1,7 +1,7 @@
 ﻿using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using TMPro;
 using UnityEngine;
 
@@ -12,7 +12,7 @@ namespace Sample.UI
         [SerializeField] private TMP_Text distanceText;
         [SerializeField] private TMP_Text timeText;
         
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
 
         private string _distanceTemplate;
         private string _timeTemplate;

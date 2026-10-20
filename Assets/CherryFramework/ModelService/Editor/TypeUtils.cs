@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 
-namespace CherryFramework.DataModels.Editor
+namespace CherryFramework.ModelService.Editor
 {
     public static class TypeUtils
     {

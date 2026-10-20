@@ -1,10 +1,10 @@
 using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.SoundService;
 using CherryFramework.TickDispatcher;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using Sample.Scripts.Settings;
 using Sample.Settings;
 using UnityEngine;
@@ -23,7 +23,7 @@ namespace Sample
     // To start receiving ticks just call (Ticker instance).Register(this, (optional tick period)). To stop - call Unregister
     public class Player : BehaviourBase, IFixedTickable, IGameSaveData
     {
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
         [Inject] private readonly GameSettings _gameSettings;
         [Inject] private readonly Ticker _ticker;
         [Inject] private readonly InputSystem_Actions _inputSystem;

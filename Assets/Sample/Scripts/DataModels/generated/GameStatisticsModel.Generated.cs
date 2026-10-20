@@ -5,10 +5,10 @@
 
 using System;
 using Newtonsoft.Json;
-using CherryFramework.DataModels;
-using Sample.DataModels.Templates;
+using CherryFramework.ModelService;
+using Sample.DataModels;
 
-namespace GeneratedDataModels
+namespace Sample.DataModels.generated
 {
     [Serializable]
     public class GameStatisticsModel : DataModelBase

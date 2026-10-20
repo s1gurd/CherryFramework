@@ -64,7 +64,7 @@ namespace CherryFramework.Installer.Tests
             {
                 Write(archive, "Assets/Sample/Scenes/dinoscene.unity", "scene");
                 Write(archive, "Assets/Sample/Scenes/dinoscene.unity.meta", "meta");
-                Write(archive, "Assets/Scripts/GeneratedDataModels/GameStateDataModel.Generated.cs", "code");
+                Write(archive, "Assets/Sample/Scripts/DataModels/generated/GameStateDataModel.Generated.cs", "code");
             }
 
             File.Copy(sampleZip, payload, true);
@@ -75,7 +75,7 @@ namespace CherryFramework.Installer.Tests
             Assert.IsTrue(File.Exists(Path.Combine(_root, "Assets", "Sample", "Scenes", "dinoscene.unity")));
             Assert.IsTrue(File.Exists(Path.Combine(_root, "Assets", "Sample", "Scenes", "dinoscene.unity.meta")));
             Assert.IsTrue(File.Exists(
-                Path.Combine(_root, "Assets", "Scripts", "GeneratedDataModels", "GameStateDataModel.Generated.cs")));
+                Path.Combine(_root, "Assets", "Sample", "Scripts", "DataModels", "generated", "GameStateDataModel.Generated.cs")));
 
             var packages = ManifestEditor.ReadPackages(ManifestEditor.Read(_root));
 

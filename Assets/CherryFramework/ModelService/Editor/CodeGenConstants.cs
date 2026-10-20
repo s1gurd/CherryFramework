@@ -1,19 +1,45 @@
-namespace CherryFramework.DataModels.Editor
+namespace CherryFramework.ModelService.Editor
 {
     public static class CodeGenConstants
     {
         public const string FilenameEnd = ".Generated.cs";
-        public const string BasePath = "Assets/Scripts";
-        public const string ModelsPathAndNamespace = "GeneratedDataModels";
+
+        /// <summary>
+        /// The root every generated path is relative to. The project folder
+        /// itself, so a template that lives outside of Assets still works.
+        /// </summary>
+        public const string ProjectRootPath = ".";
+
+        /// <summary>
+        /// The folder, next to the template, the generated model is put into.
+        /// </summary>
+        public const string GeneratedFolderName = "generated";
+
+        /// <summary>
+        /// The suffix added to the namespace of the template to get the
+        /// namespace of the generated model.
+        /// </summary>
+        public const string GeneratedNamespaceSuffix = ".generated";
+
+        /// <summary>
+        /// Where the model of a template goes when the source file of that
+        /// template cannot be found.
+        /// </summary>
+        public const string FallbackOutputFolder = "Assets/Scripts/GeneratedDataModels";
 
         public const string TemplateSuffix = "Template";
         public const string ModelSuffix = "Model";
 
         public static readonly string[] CopyAttributes = { "[JsonIgnore]", "[Newtonsoft.Json.JsonIgnoreAttribute()]" };
 
-        public const string TemplateNamespaceSuffix = "DataModels.Templates";
+        /// <summary>
+        /// The namespace of a template has to end with this, so the generator
+        /// can tell the templates from the runtime code of the framework.
+        /// </summary>
+        public const string TemplateNamespaceSuffix = "DataModels";
         public const string TemplateNamespacePlaceholder = "##TEMPLATENAMESPACE##";
         public const string TemplateNamePlaceholder = "##TEMPLATE##";
+        public const string NamespacePlaceholder = "##NAMESPACE##";
         public const string ModelNamePlaceholder = "##MODEL##";
         public const string ModelConstructorNamePlaceholder = "##CTORNAME##";
         public const string MemberNamePlaceholder = "##MEMBER##";
@@ -30,10 +56,10 @@ namespace CherryFramework.DataModels.Editor
 
 using System;
 using Newtonsoft.Json;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using {TemplateNamespacePlaceholder};
 
-namespace {ModelsPathAndNamespace}
+namespace {NamespacePlaceholder}
 {{
     [Serializable]
     public class {ModelNamePlaceholder}{ConstraintsPlaceholder} : DataModelBase

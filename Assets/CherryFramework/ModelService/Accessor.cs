@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
-namespace CherryFramework.DataModels
+namespace CherryFramework.ModelService
 {
     public class Accessor<T>
     {

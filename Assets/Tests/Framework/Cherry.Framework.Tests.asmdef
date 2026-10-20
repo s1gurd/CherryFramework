@@ -3,6 +3,7 @@
     "rootNamespace": "",
     "references": [
         "Cherry.Framework",
+        "Cherry.Framework.Editor",
         "Cherry.Framework.TestSupport",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

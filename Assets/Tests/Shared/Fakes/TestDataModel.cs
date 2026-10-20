@@ -1,5 +1,5 @@
 using System;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 
 namespace CherryFramework.Tests.Fakes
 {

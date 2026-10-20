@@ -1,12 +1,12 @@
 using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.SoundService;
 using CherryFramework.StateService;
 using CherryFramework.UI.Views;
 using DG.Tweening;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using Sample.Scripts.Settings;
 using Sample.Settings;
 using Sample.UI;
@@ -21,7 +21,7 @@ namespace Sample
     {
         // Get the dependencies. They are injected in OnEnable 
         [Inject] private readonly GameSettings _gameSettings;
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
         [Inject] private readonly StateService _stateService;
         [Inject] private readonly InputSystem_Actions _inputSystem;
         [Inject] private readonly SaveGameManager _saveGame;

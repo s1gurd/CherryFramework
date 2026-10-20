@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.ModelService.ModelDataStorageBridges;
 using CherryFramework.Utils;
 using UnityEngine;
 
-namespace CherryFramework.DataModels
+namespace CherryFramework.ModelService
 {
-	public class ModelService
+	public class DataModelService
 	{
 		public readonly ModelDataStorageBridgeBase DataStorage;
 		
 		private readonly Dictionary<Type, DataModelBase> _singletonModels = new();
 		private readonly Dictionary<string, DataModelBase> _transientModels = new();
 		
-		public ModelService(ModelDataStorageBridgeBase bridge, bool debugMessages)
+		public DataModelService(ModelDataStorageBridgeBase bridge, bool debugMessages)
 		{
 			DataStorage = bridge;
 			DataStorage.Setup(_singletonModels, debugMessages);

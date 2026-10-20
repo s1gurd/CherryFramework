@@ -1,8 +1,8 @@
 using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.TickDispatcher;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using UnityEngine;
 
 namespace Sample
@@ -17,7 +17,7 @@ namespace Sample
     {
         [SerializeField] public Sprite[] sprites;
     
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
         [Inject] private readonly Ticker _ticker;
     
         private SpriteRenderer _spriteRenderer;

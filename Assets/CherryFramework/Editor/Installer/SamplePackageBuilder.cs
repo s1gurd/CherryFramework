@@ -12,14 +12,14 @@ namespace CherryFramework.Installer
     {
         public const string PayloadRelativePath = "Payload/CherryFrameworkSample.zip";
 
+        /// <summary>
+        /// The Sample ships as it sits in the repository. The models of the
+        /// Sample templates live in the generated folder next to the
+        /// template, so they are inside the Sample folder already.
+        /// </summary>
         public static IReadOnlyList<ZipSourceFolder> Sources => new[]
         {
-            new ZipSourceFolder { sourceDirectory = "Assets/Sample", entryPrefix = "Assets/Sample" },
-            new ZipSourceFolder
-            {
-                sourceDirectory = "Assets/Scripts/GeneratedDataModels",
-                entryPrefix = "Assets/Scripts/GeneratedDataModels"
-            }
+            new ZipSourceFolder { sourceDirectory = "Assets/Sample", entryPrefix = "Assets/Sample" }
         };
 
         public static string Build(string projectRoot, string installerDirectory)

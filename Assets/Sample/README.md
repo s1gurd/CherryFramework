@@ -14,8 +14,8 @@ This sample project demonstrates the practical implementation of the CherryFrame
 
 ## Project Structure
 
-Verified against the files on disk. The generated models are **not** inside
-`Sample` - they go to `Assets/Scripts/GeneratedDataModels/`.
+Verified against the files on disk. The generated models sit in a `generated`
+folder next to the template they come from.
 
 ```
 Assets/
@@ -35,9 +35,12 @@ Assets/
 │   │   │   ├── EventKeys.cs            # Event/status key constants
 │   │   │   ├── GameSettings.cs         # ScriptableObject for game config
 │   │   │   └── InputSystem_Actions.cs  # Generated Input System wrapper
-│   │   ├── DataModels.Templates/       # Namespace must end with DataModels.Templates
+│   │   ├── DataModels/       # Namespace must end with DataModels
 │   │   │   ├── GameStateData.cs
-│   │   │   └── GameStatistics.cs
+│   │   │   ├── GameStatistics.cs
+│   │   │   └── generated/              # GENERATED - do not edit
+│   │   │       ├── GameStateDataModel.Generated.cs
+│   │   │       └── GameStatisticsModel.Generated.cs
 │   │   └── UI/
 │   │       ├── GamePaused.cs           # Pause menu
 │   │       ├── PlayerDead.cs           # Death screen
@@ -52,25 +55,20 @@ Assets/
 │       ├── AudioEventsCollection.asset     # Sound event keys
 │       ├── InputSystem.inputsettings.asset # Input System project settings
 │       └── InputSystem_Actions.inputactions
-└── Scripts/
-    └── GeneratedDataModels/           # GENERATED - do not edit
-        ├── GameStateDataModel.Generated.cs
-        ├── GameStatisticsModel.Generated.cs
-        └── ExampleDataModel.Generated.cs
 ```
 
 ### Regenerating the models
 
-The `*.DataModels.Templates` classes are **sources only**. The generated
-`*Model` classes live outside `Sample` entirely - see
-`Assets/Scripts/GeneratedDataModels/` in the tree above. To rebuild them after
+The `*.DataModels` classes are **sources only**. The generated
+`*Model` classes live in the `generated` folder next to the template, in the
+namespace of the template with a `generated` suffix. To rebuild them after
 editing a template:
 
-1. Edit the template (for example `Scripts/DataModels.Templates/GameStateData.cs`).
-   Its **namespace must end with `DataModels.Templates`**.
+1. Edit the template (for example `Scripts/DataModels/GameStateData.cs`).
+   Its **namespace must end with `DataModels`**.
 2. Run the menu item **`Tools → UnityCodeGen → Generate`**.
-3. The whole `Assets/Scripts/GeneratedDataModels/` folder is deleted and
-   regenerated.
+3. Every model is written into the `generated` folder of its template. The
+   models of the templates that are gone are removed from those folders.
 
 The model name is derived as `<template name with "Template" removed> + "Model"`,
 so `GameStateData` becomes `GameStateDataModel` and `EnemyStatsTemplate`
@@ -85,8 +83,8 @@ becomes `EnemyStatsModel`.
 The `GameInstaller` configures all services and dependencies at startup:
 
 ```csharp
-using CherryFramework.DataModels;
-using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.ModelService;
+using CherryFramework.ModelService.ModelDataStorageBridges;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.SoundService;
@@ -110,7 +108,7 @@ public class GameInstaller : InstallerBehaviourBase
     {
         // ONE shared IPlayerPrefs instance for both save systems. Creating two
         // separate PlayerPrefsData objects would leave SaveGameManager and
-        // ModelService writing to different stores, so data saved by one would
+        // DataModelService writing to different stores, so data saved by one would
         // be invisible to the other.
         var playerPrefs = new PlayerPrefsData();
 
@@ -121,7 +119,7 @@ public class GameInstaller : InstallerBehaviourBase
         // event/status system working.
         BindAsSingleton(new StateService(true));
         BindAsSingleton(new SaveGameManager(playerPrefs, true));
-        BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), true));
+        BindAsSingleton(new DataModelService(new PlayerPrefsBridge(playerPrefs), true));
         BindAsSingleton(new SoundService(globalAudioSettings, audioEvents));
         BindAsSingleton(new ViewService(uiRoot, true));
 
@@ -136,12 +134,12 @@ public class GameInstaller : InstallerBehaviourBase
 
 ### Reading the Console
 
-`SaveGameManager`, `ModelService` and `ViewService` are all constructed with
+`SaveGameManager`, `DataModelService` and `ViewService` are all constructed with
 `debugMessages: true`, so pressing Play immediately shows what the framework is
 doing. Real output from this scene:
 
 ```
-[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-GeneratedDataModels.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
+[Model Service - PlayerPrefs] Loaded model by key: SINGLETON-Sample.DataModels.generated.GameStatisticsModel from PlayerPrefs: {"GameRunning":false,"MaxDistance":16,"TotalRunTime":16,"TotalDistance":52,"TriesNum":5}
 [Save Game Manager] Loaded component Sample.Player with key SceneId:0.7abb6373-7d8c-43dc-9c12-6c6114f78bba-Sample.Player found data: {"_direction":{}, "_jumpState":0}
 [Save Game Manager] Loaded component Sample.Spawner with key SceneId:0.58f6ad04-11e7-41f9-86cf-a87ef00b0a3b-Sample.Spawner found data: {"_spawnedObjects":[0,0,4,5]}
 [State Service] Set status "GameRunning" at time 5,713958
@@ -158,7 +156,7 @@ key is deleted and then immediately written back:
 ```
 [Save Game Manager] Deleted data for component Sample.Player with key SceneId:0.7abb6373-...
 [Save Game Manager] Deleted data for component ... with key Obstacle:0-...
-[Model Service - PlayerPrefs] Removed model GeneratedDataModels.GameStateDataModel from Player Prefs...
+[Model Service - PlayerPrefs] Removed model Sample.DataModels.generated.GameStateDataModel from Player Prefs...
 
 [Save Game Manager] Saved key SceneId:0.7abb6373-...-Sample.Player with {"_direction":{},"_jumpState":0}
 [Save Game Manager] Saved key SceneId:0.58f6ad04-...-Sample.Spawner with {"_spawnedObjects":[0,6,4,1]}
@@ -166,8 +164,8 @@ key is deleted and then immediately written back:
 [Save Game Manager] Saved key Obstacle:1-... with {"_position":{"x":-0.74753,...},...}
 [Save Game Manager] Saved key Obstacle:2-... with {"_position":{"x":3.33741283,...},...}
 [Save Game Manager] Saved key Obstacle:3-... with {"_position":{"x":7.39093876,...},...}
-[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStateDataModel with content: {"GameSpeed":3.0,...,"DistanceTraveled":18,"RunTime":6}
-[Model Service - PlayerPrefs] Saved model SINGLETON-GeneratedDataModels.GameStatisticsModel with content: {"GameRunning":false,...,"MaxDistance":18,"TotalDistance":70,"TriesNum":6}
+[Model Service - PlayerPrefs] Saved model SINGLETON-Sample.DataModels.generated.GameStateDataModel with content: {"GameSpeed":3.0,...,"DistanceTraveled":18,"RunTime":6}
+[Model Service - PlayerPrefs] Saved model SINGLETON-Sample.DataModels.generated.GameStatisticsModel with content: {"GameRunning":false,...,"MaxDistance":18,"TotalDistance":70,"TriesNum":6}
 ```
 
 Press Play again and those same numbers come back in the `Loaded key ...` lines.
@@ -181,7 +179,7 @@ The key tells you which system owns the data:
 
 | Key shape | Owner | Meaning |
 | --------- | ----- | ------- |
-| `SINGLETON-GeneratedDataModels.XxxModel` | `ModelService` | a data model, stored as one JSON blob |
+| `SINGLETON-Sample.DataModels.generated.XxxModel` | `DataModelService` | a data model, stored as one JSON blob |
 | `SceneId:{buildIndex}.{guid}-{Type}` | `SaveGameManager` | a scene object; `0` is this scene's build index |
 | `{customId}:{suffix}-{Type}` | `SaveGameManager` | a **spawned** object; `Obstacle:0` is the first one |
 
@@ -225,7 +223,7 @@ The game uses two generated data models from templates:
 **GameStateData** (Template):
 
 ```csharp
-namespace Sample.DataModels.Templates
+namespace Sample.DataModels
 {
     [Serializable]
     public class GameStateData
@@ -242,7 +240,7 @@ namespace Sample.DataModels.Templates
 **GameStatistics** (Template):
 
 ```csharp
-namespace Sample.DataModels.Templates
+namespace Sample.DataModels
 {
     [Serializable]
     public class GameStatistics
@@ -507,7 +505,7 @@ public class RocketPowerUp : Obstacle
 ### Initial Startup
 
 1. `GameInstaller` configures all dependencies
-2. `GameManager` loads saved state from `ModelService`
+2. `GameManager` loads saved state from `DataModelService`
 3. UI shows either main menu or death screen based on previous session
 4. `ViewService` manages initial view presentation
 

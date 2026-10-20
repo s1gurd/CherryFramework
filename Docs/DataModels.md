@@ -5,7 +5,7 @@
 1. [Overview](#overview)
 2. [DataModelBase](#datamodelbase)
 3. [Accessor&lt;T&gt;](#accessort)
-4. [ModelService](#modelservice)
+4. [DataModelService](#datamodelservice)
 5. [Bindings System](#bindings-system)
 6. [Value Processors](#value-processors)
 7. [Storage Bridges](#storage-bridges)
@@ -21,13 +21,13 @@ The CherryFramework Data Models system provides a robust, observable data layer 
 
 ### Key Features
 
-- **Centralized Model Management**: `ModelService` handles all model instances
+- **Centralized Model Management**: `DataModelService` handles all model instances
 - **Observable Properties**: Automatic change notification
 - **One-way (downward) bindings**: the model pushes changes to your subscribers. The framework does **not** push UI input back into a model - call the model property setter yourself when you need that.
 - **Binding Activation Modes**: Control when a binding first fires and whether it delivers updates before the model is ready (`BindingActivation` enum)
 - **Value Processing**: Transform values through pipelines
 - **Automatic Persistence**: Save/load models to PlayerPrefs or custom storage, with `ReadyMode` control over when a model becomes ready after loading
-- **Transient Models**: Short-lived, ID-keyed model instances managed by `ModelService`
+- **Transient Models**: Short-lived, ID-keyed model instances managed by `DataModelService`
 - **Code Generation**: Auto-create model classes from templates, including generic templates
 - **Singleton Management**: Global model instances
 - **Typed Accessors**: `Accessor<T>` is typed per member, so a binding callback receives a real `int`, not `object`
@@ -39,8 +39,8 @@ The CherryFramework Data Models system provides a robust, observable data layer 
 ```csharp
 using System;                                  // Func<>, Action<>
 using CherryFramework.BaseClasses;              // BehaviourBase
-using CherryFramework.DataModels;               // DataModelBase, Accessor<T>, Bindings
-using CherryFramework.DataModels.ModelDataStorageBridges; // PlayerPrefsBridge
+using CherryFramework.ModelService;               // DataModelBase, Accessor<T>, Bindings
+using CherryFramework.ModelService.ModelDataStorageBridges; // PlayerPrefsBridge
 using CherryFramework.DependencyManager;        // [Inject], InstallerBehaviourBase
 using CherryFramework.StateService;             // StateService
 using CherryFramework.Utils.PlayerPrefsWrapper; // PlayerPrefsData
@@ -54,7 +54,7 @@ attribute leaves your accessor serialized into the save file.
 
 ## DataModelBase
 
-**Namespace**: `CherryFramework.DataModels`
+**Namespace**: `CherryFramework.ModelService`
 
 **Purpose**: Abstract base class for all data models. Provides property change notification, binding management, and serialization support.
 
@@ -268,7 +268,7 @@ Every example further down uses these accessors, so a single consistent
 
 ## Accessor<T>
 
-**Namespace**: `CherryFramework.DataModels`
+**Namespace**: `CherryFramework.ModelService`
 
 **Purpose**: Provides typed access to model properties with value processing pipeline support.
 
@@ -308,7 +308,7 @@ public class Accessor<T>
 ```csharp
 public class GameUI : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
     private PlayerModel _playerModel;
 
     private void Start()
@@ -340,22 +340,22 @@ pipeline, it does not replace the first one.
 
 ---
 
-## ModelService
+## DataModelService
 
-**Namespace**: `CherryFramework.DataModels`
+**Namespace**: `CherryFramework.ModelService`
 
 **Purpose**: Central service for managing all model instances, their lifecycle, and persistence. This is the primary entry point for working with data models in the framework.
 
 ### Class Definition
 
 ```csharp
-public class ModelService
+public class DataModelService
 {
     // Properties
     public readonly ModelDataStorageBridgeBase DataStorage;
 
     // Constructor
-    public ModelService(ModelDataStorageBridgeBase bridge, bool debugMessages);
+    public DataModelService(ModelDataStorageBridgeBase bridge, bool debugMessages);
 
     // Singleton methods
     public T GetOrCreateSingletonModel<T>() where T : DataModelBase, new();
@@ -397,7 +397,7 @@ public class GameInstaller : InstallerBehaviourBase
     protected override void Install()
     {
         // Create a shared PlayerPrefs implementation (reuse the same instance
-        // for ModelService and SaveGameManager so both see the same data)
+        // for DataModelService and SaveGameManager so both see the same data)
         var playerPrefs = new PlayerPrefsData();
 
         // Create storage bridge. This is a plain constructor argument, not DI -
@@ -405,7 +405,7 @@ public class GameInstaller : InstallerBehaviourBase
         var bridge = new PlayerPrefsBridge(playerPrefs);
 
         // Create model service with bridge
-        var modelService = new ModelService(bridge, _debugModels);
+        var modelService = new DataModelService(bridge, _debugModels);
 
         // Bind as singleton for injection
         BindAsSingleton(modelService);
@@ -418,7 +418,7 @@ public class GameInstaller : InstallerBehaviourBase
 ```csharp
 public class GameManager : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     private PlayerModel _player;
     private SettingsModel _settings;
@@ -462,7 +462,7 @@ public class GameManager : BehaviourBase
 ```csharp
 public class SaveGameLoader
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     public void LoadSavedProfile(PlayerModel savedProfile)
     {
@@ -481,7 +481,7 @@ public class SaveGameLoader
 
 ### DownwardBindingHandler
 
-**Namespace**: `CherryFramework.DataModels`
+**Namespace**: `CherryFramework.ModelService`
 
 **Purpose**: Represents a one-way binding from model to subscriber.
 
@@ -534,7 +534,7 @@ Behaviour details:
 
 ### Bindings Container
 
-**Namespace**: `CherryFramework.DataModels`
+**Namespace**: `CherryFramework.ModelService`
 
 **Purpose**: Manages a collection of bindings with automatic cleanup. Used with `BehaviourBase` and `GeneralClassBase`.
 
@@ -553,7 +553,7 @@ public class Bindings
 ```csharp
 public class PlayerHUD : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
     private PlayerModel _player;
 
     private void Start()
@@ -599,7 +599,7 @@ public class PlayerHUD : BehaviourBase
 ```csharp
 public class TempUI : MonoBehaviour
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
     private DownwardBindingHandler _binding;
 
     private void Start()
@@ -632,7 +632,7 @@ public class TempUI : MonoBehaviour
 
 ## Value Processors
 
-**Namespace**: `CherryFramework.DataModels`
+**Namespace**: `CherryFramework.ModelService`
 
 **Purpose**: Transform values in a pipeline before they reach subscribers.
 
@@ -668,7 +668,7 @@ accessor.AddProcessor(value => Mathf.Max(0, value), priority: 20); // Runs secon
 ```csharp
 public class CurrencyDisplay : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
     private PlayerModel _player;
 
     private void Start()
@@ -701,7 +701,7 @@ public class CurrencyDisplay : BehaviourBase
 
 ### ModelDataStorageBridgeBase (Abstract)
 
-**Namespace**: `CherryFramework.DataModels.ModelDataStorageBridges`
+**Namespace**: `CherryFramework.ModelService.ModelDataStorageBridges`
 
 **Purpose**: Abstract base for implementing model persistence.
 
@@ -728,7 +728,7 @@ public abstract class ModelDataStorageBridgeBase
 
 ### PlayerPrefsBridge
 
-**Namespace**: `CherryFramework.DataModels.ModelDataStorageBridges`
+**Namespace**: `CherryFramework.ModelService.ModelDataStorageBridges`
 
 **Purpose**: Concrete implementation using Unity PlayerPrefs with JSON serialization.
 The `IPlayerPrefs` implementation is passed as a plain constructor argument (this is **not** dependency injection - `[Inject]` means something else in this framework), so the same instance can be shared with other services such as `SaveGameManager`.
@@ -779,7 +779,7 @@ protected override void Install()
     var bridge = new PlayerPrefsBridge(playerPrefs);
 
     // Create model service with bridge
-    var modelService = new ModelService(bridge, debugMessages: true);
+    var modelService = new DataModelService(bridge, debugMessages: true);
 
     BindAsSingleton(modelService);
 }
@@ -787,7 +787,7 @@ protected override void Install()
 // Using storage in a manager
 public class SaveManager : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     private void Start()
     {
@@ -822,7 +822,7 @@ public class SaveManager : BehaviourBase
 ```csharp
 public class ModelsSaver : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     [SerializeField] private bool onDestroyThis;
     [SerializeField] private bool onApplicationLostFocus;
@@ -860,23 +860,27 @@ public class ModelsSaver : BehaviourBase
 
 ## Code Generation
 
-**Namespace**: `CherryFramework.DataModels.Editor`
+**Namespace**: `CherryFramework.ModelService.Editor`
 
 **Purpose**: Automatically generate model classes from templates.
 
 ### Template-Based Generation
 
-**Template Class** (`ExampleData.cs`):
+**Template Class** (`Assets/Sample/Scripts/DataModels/GameStateData.cs`):
 
 ```csharp
-namespace CherryFramework.DataModels.Templates
+namespace Sample.DataModels
 {
-    public class ExampleData
+    [Serializable]
+    public class GameStateData
     {
-        public string Foo = "foo";
+        public float GameSpeed;
     }
 }
 ```
+
+The namespace of a template has to end with `DataModels` - that is how the
+generator tells the templates from the rest of the code.
 
 ### How the Model Gets Its Name
 
@@ -891,38 +895,55 @@ So the only thing it removes is the literal word `Template`:
 
 | Template class      | Generated model         |
 | ------------------- | ----------------------- |
-| `ExampleData`       | `ExampleDataModel`      |
 | `GameStateData`     | `GameStateDataModel`    |
 | `EnemyStatsTemplate`| `EnemyStatsModel`       |
 
-`ExampleData` contains no "Template", so nothing is stripped and you get
-**`ExampleDataModel`**, not `ExampleModel`. If you want a shorter name, name
-your template `ExampleTemplate`.
+`GameStateData` contains no "Template", so nothing is stripped and you get
+**`GameStateDataModel`**, not `GameStateModel`. If you want a shorter name,
+name your template `EnemyStatsTemplate`.
 
-The output always lands in namespace `GeneratedDataModels`, in the folder
-`Assets/Scripts/GeneratedDataModels` (see `CodeGenConstants`).
+### Where the Model Lands
 
-**Generated Model** (`ExampleDataModel.Generated.cs`):
+The model of a template is generated **next to its template**, into a
+`generated` folder in the folder the template file was found in:
+
+```
+Assets/Sample/Scripts/DataModels/GameStateData.cs
+  → Assets/Sample/Scripts/DataModels/generated/GameStateDataModel.Generated.cs
+```
+
+One `generated` folder per folder with templates. The namespace of the model
+is the namespace of the template with a `generated` suffix, so the model of
+`Sample.DataModels.GameStateData` is
+`Sample.DataModels.generated.GameStateDataModel`.
+
+The generator looks the source file of the template up through the
+AssetDatabase, so the folder of the template does not have to follow its
+namespace. When the source file cannot be found, the model is written to
+`Assets/Scripts/GeneratedDataModels` and the generator says so in the
+console.
+
+**Generated Model** (`GameStateDataModel.Generated.cs`):
 
 ```csharp
 // <auto-generated/>
-namespace GeneratedDataModels
+namespace Sample.DataModels.generated
 {
     [Serializable]
-    public class ExampleDataModel : DataModelBase
+    public class GameStateDataModel : DataModelBase
     {
-        private ExampleData _template = new();
+        private GameStateData _template = new();
 
-        public ExampleDataModel() : base()
+        public GameStateDataModel() : base()
         {
-            Getters.Add(nameof(Foo), new Func<string>(() => Foo));
-            Setters.Add(nameof(Foo), new Action<string>(o => Foo = o));
-            FooAccessor = new Accessor<string>(this, nameof(Foo));
+            Getters.Add(nameof(GameSpeed), new Func<float>(() => GameSpeed));
+            Setters.Add(nameof(GameSpeed), new Action<float>(o => GameSpeed = o));
+            GameSpeedAccessor = new Accessor<float>(this, nameof(GameSpeed));
         }
 
         // The generator also emits a constructor that copies from a template
         // instance. It requires the template to implement ICloneable.
-        public ExampleDataModel(ExampleData source) : this()
+        public GameStateDataModel(GameStateData source) : this()
         {
             if (source != null)
             {
@@ -930,12 +951,12 @@ namespace GeneratedDataModels
             }
         }
 
-        public string Foo
+        public float GameSpeed
         {
-            get => _template.Foo;
-            set { _template.Foo = value; Send<string>(nameof(Foo), value); }
+            get => _template.GameSpeed;
+            set { _template.GameSpeed = value; Send<float>(nameof(GameSpeed), value); }
         }
-        [JsonIgnore] public Accessor<string> FooAccessor;
+        [JsonIgnore] public Accessor<float> GameSpeedAccessor;
     }
 }
 ```
@@ -955,10 +976,14 @@ Every **public field** of the template becomes a property plus a matching
 
 To generate models:
 
-1. Create template classes in `*.DataModels.Templates` namespace
+1. Create template classes in `*.DataModels` namespace
 2. Use "Tools → UnityCodeGen → Generate" menu
-3. Generated models appear in `Assets/Scripts/GeneratedDataModels/`
-   (the whole folder is deleted and regenerated on every run)
+3. Every template gets a model in the `generated` folder next to it, in the
+   namespace of the template with the `generated` suffix
+
+A model whose template is gone is removed from its `generated` folder. The
+folder itself and the meta files of the models that stay are kept, so their
+guids do not change on every run.
 
 #### Generic Templates
 
@@ -988,12 +1013,12 @@ Non-generic templates are unaffected and generate as before.
 ```csharp
 public class GameManager : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
-    private ExampleDataModel _example;
+    [Inject] private readonly DataModelService _modelService;
+        private GameStateDataModel _example;
 
     private void Start()
     {
-        _example = _modelService.GetOrCreateSingletonModel<ExampleDataModel>();
+        _example = _modelService.GetOrCreateSingletonModel<GameStateDataModel>();
 
         // Use generated accessors
         _example.FooAccessor.BindDownwards(value => Debug.Log($"Foo changed: {value}"));
@@ -1011,11 +1036,11 @@ public class GameManager : BehaviourBase
 
 ### 1. Centralized Model Access
 
-Always access models through `ModelService`:
+Always access models through `DataModelService`:
 
 ```csharp
 // GOOD
-[Inject] private readonly ModelService _modelService;
+[Inject] private readonly DataModelService _modelService;
 private PlayerModel _player => _modelService.GetOrCreateSingletonModel<PlayerModel>();
 
 // BAD - Direct instantiation
@@ -1027,7 +1052,7 @@ private PlayerModel _player = new PlayerModel();
 ```csharp
 public class GameInitializer : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     private void Start()
     {
@@ -1050,7 +1075,7 @@ public class GameInitializer : BehaviourBase
 ```csharp
 public class PlayerStatsUI : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     [SerializeField] private TMP_Text _healthText;
     [SerializeField] private Slider _healthBar;
@@ -1078,7 +1103,7 @@ public class PlayerStatsUI : BehaviourBase
 ```csharp
 public class ScoreDisplay : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     private void Start()
     {
@@ -1094,7 +1119,7 @@ public class ScoreDisplay : BehaviourBase
 
 ```csharp
 // Enable debug mode in installer
-var modelService = new ModelService(bridge, debugMessages: true);
+var modelService = new DataModelService(bridge, debugMessages: true);
 
 // Or per model
 var player = modelService.GetOrCreateSingletonModel<PlayerModel>();
@@ -1131,7 +1156,7 @@ public void LevelUp()
 public class AutoSave : BehaviourBase
 {
     [Inject] private StateService _stateService;
-    [Inject] private ModelService _modelService;
+    [Inject] private DataModelService _modelService;
 
     private void Start()
     {
@@ -1170,7 +1195,7 @@ public class AutoSave : BehaviourBase
 
 ```csharp
 // 1. Define template (PlayerProfileData.cs)
-namespace Game.DataModels.Templates
+namespace Game.DataModels
 {
     [Serializable]
     public class PlayerProfileData
@@ -1192,7 +1217,7 @@ public class GameInstaller : InstallerBehaviourBase
     protected override void Install()
     {
         var bridge = new PlayerPrefsBridge(new PlayerPrefsData());
-        var modelService = new ModelService(bridge, debugMessages: true);
+        var modelService = new DataModelService(bridge, debugMessages: true);
 
         BindAsSingleton(modelService);
     }
@@ -1201,7 +1226,7 @@ public class GameInstaller : InstallerBehaviourBase
 // 4. Game manager using models
 public class GameManager : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
     private PlayerProfileDataModel _profile;
 
     protected override void OnEnable()
@@ -1262,7 +1287,7 @@ public class GameManager : BehaviourBase
 // 5. UI Controller
 public class ProfileUI : BehaviourBase
 {
-    [Inject] private readonly ModelService _modelService;
+    [Inject] private readonly DataModelService _modelService;
 
     [SerializeField] private TMP_Text _nameText;
     [SerializeField] private TMP_Text _levelText;
@@ -1328,13 +1353,17 @@ public class ProfileUI : BehaviourBase
 values, the downward bindings and their activation modes, the value
 processors, the singleton and the transient models and the storage round trip.
 
+`Assets/Tests/Framework/ModelsGeneratorTests.cs` pins where the generator
+puts a model: the `generated` folder next to the template, the namespace of
+the template with the `generated` suffix and the name of the file.
+
 ---
 
 ## Summary
 
 | Component         | Purpose                  | Key Features                              |
 | ----------------- | ------------------------ | ----------------------------------------- |
-| `ModelService`    | Central model management | Singleton handling, storage bridging      |
+| `DataModelService`    | Central model management | Singleton handling, storage bridging      |
 | `DataModelBase`   | Base model class         | Property notification, binding management |
 | `Accessor<T>`     | Property access          | Value processing, binding creation        |
 | `Bindings`        | Binding container        | Auto-cleanup, multiple binding management |
@@ -1342,4 +1371,4 @@ processors, the singleton and the transient models and the storage round trip.
 | `StorageBridge`   | Persistence              | JSON serialization, key generation        |
 | `ModelsGenerator` | Code generation          | Template-based model creation             |
 
-The Data Models system provides a robust, type-safe foundation for managing application state with automatic UI updates and persistence, all coordinated through the central `ModelService`.
+The Data Models system provides a robust, type-safe foundation for managing application state with automatic UI updates and persistence, all coordinated through the central `DataModelService`.

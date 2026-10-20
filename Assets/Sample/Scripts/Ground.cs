@@ -1,9 +1,9 @@
 using CherryFramework.BaseClasses;
-using CherryFramework.DataModels;
+using CherryFramework.ModelService;
 using CherryFramework.DependencyManager;
 using CherryFramework.StateService;
 using CherryFramework.TickDispatcher;
-using GeneratedDataModels;
+using Sample.DataModels.generated;
 using Sample.Settings;
 using UnityEngine;
 
@@ -18,7 +18,7 @@ namespace Sample
     public class Ground : BehaviourBase, ITickable
     {
         [Inject] private readonly StateService _stateService;
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
         [Inject] private readonly Ticker _ticker;
     
         private MeshRenderer _meshRenderer;

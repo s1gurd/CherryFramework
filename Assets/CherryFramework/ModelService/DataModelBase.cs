@@ -6,7 +6,7 @@ using System.Reflection;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace CherryFramework.DataModels
+namespace CherryFramework.ModelService
 {
     [Serializable]
     public abstract class DataModelBase

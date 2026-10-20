@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
-using CherryFramework.DataModels;
-using CherryFramework.DataModels.ModelDataStorageBridges;
+using CherryFramework.ModelService;
+using CherryFramework.ModelService.ModelDataStorageBridges;
 using CherryFramework.DependencyManager;
 using CherryFramework.SaveGameManager;
 using CherryFramework.SoundService;
@@ -32,7 +32,7 @@ namespace Sample
             BindAsSingleton<Ticker>();
             BindAsSingleton(new StateService(true));
             var playerPrefs = new PlayerPrefsData();
-            BindAsSingleton(new ModelService(new PlayerPrefsBridge(playerPrefs), true));
+            BindAsSingleton(new DataModelService(new PlayerPrefsBridge(playerPrefs), true));
             BindAsSingleton(new SaveGameManager(playerPrefs, true));
             BindAsSingleton(new SoundService(globalAudioSettings, audioEvents));
             BindAsSingleton(new ViewService(uiRoot, true));

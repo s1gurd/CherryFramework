@@ -33,7 +33,7 @@ namespace CherryFramework.Installer.Tests
             {
                 Write(archive, "Assets/Sample/Scenes/dinoscene.unity", "scene");
                 Write(archive, "Assets/Sample/Scenes/dinoscene.unity.meta", "meta");
-                Write(archive, "Assets/Scripts/GeneratedDataModels/GameStateDataModel.Generated.cs", "code");
+                Write(archive, "Assets/Sample/Scripts/DataModels/generated/GameStateDataModel.Generated.cs", "code");
             }
 
             var definition = new SampleDefinition
@@ -47,7 +47,8 @@ namespace CherryFramework.Installer.Tests
             Assert.IsTrue(result.Installed, result.Error);
             Assert.IsTrue(File.Exists(Path.Combine(_root, "Assets", "Sample", "Scenes", "dinoscene.unity")));
             Assert.IsTrue(File.Exists(Path.Combine(_root, "Assets", "Sample", "Scenes", "dinoscene.unity.meta")));
-            Assert.IsTrue(File.Exists(Path.Combine(_root, "Assets", "Scripts", "GeneratedDataModels", "GameStateDataModel.Generated.cs")));
+            Assert.IsTrue(File.Exists(
+                Path.Combine(_root, "Assets", "Sample", "Scripts", "DataModels", "generated", "GameStateDataModel.Generated.cs")));
         }
 
         [Test]

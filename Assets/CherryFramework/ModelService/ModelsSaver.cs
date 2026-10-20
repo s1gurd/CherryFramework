@@ -3,7 +3,7 @@ using CherryFramework.DependencyManager;
 using EditorAttributes;
 using UnityEngine;
 
-namespace CherryFramework.DataModels
+namespace CherryFramework.ModelService
 {
     [DefaultExecutionOrder(10000)]
     public class ModelsSaver : BehaviourBase
@@ -14,7 +14,7 @@ namespace CherryFramework.DataModels
         [SerializeField] private bool onApplicationPause;
         [SerializeField] private bool onApplicationQuit = true;
         
-        [Inject] private readonly ModelService _modelService;
+        [Inject] private readonly DataModelService _modelService;
 
         protected override void OnDestroy()
         {

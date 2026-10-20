@@ -108,7 +108,7 @@ The `dinoscene.unity` scene is the main gameplay scene for the CherryFramework s
 - `Ticker` (update manager)
 - `StateService` (event system)
 - `SaveGameManager` (persistence)
-- `ModelService` (data models)
+- `DataModelService` (data models)
 - `SoundService` (audio)
 - `ViewService` (UI navigation)
 - `InputSystem_Actions` (input)
@@ -305,7 +305,7 @@ counting the script reference in the scene file):
   `saveTransform: 0` (only its own state is saved, not its position)
 
 `Ground` has **no** `PersistentObject`. It tracks distance and time through the
-`GameStateData` data model instead, which is handled by `ModelService` rather
+`GameStateData` data model instead, which is handled by `DataModelService` rather
 than by `SaveGameManager`.
 
 Both objects are non-spawnable (`spawnableObject: 0`), so their ids are
