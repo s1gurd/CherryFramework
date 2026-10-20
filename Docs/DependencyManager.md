@@ -15,7 +15,8 @@
 11. [Limitations](#limitations)
 12. [Best Practices](#best-practices)
 13. [Examples](#examples)
-14. [Summary](#summary)
+14. [Tests](#tests)
+15. [Summary](#summary)
 
 ---
 
@@ -1500,6 +1501,18 @@ public class SettingsUI : InjectMonoBehaviour
     }
 }
 ```
+
+---
+
+## Tests
+
+`Assets/Tests/Framework/DependencyContainerTests.cs` pins the container: the
+singleton and the transient bindings, the field and the property injection, the
+inherited fields, the removal and the disposal.
+
+`Assets/Tests/PlayMode/InstallerBehaviourTests.cs` and
+`Assets/Tests/PlayMode/InjectMonoBehaviourTests.cs` pin the lifecycle: the
+installer binds its services on awake and releases them on destroy.
 
 ---
 

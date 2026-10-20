@@ -10,7 +10,8 @@
 6. [Common Issues and Solutions](#common-issues-and-solutions)
 7. [Best Practices](#best-practices)
 8. [Examples](#examples)
-9. [Summary](#summary)
+9. [Tests](#tests)
+10. [Summary](#summary)
 
 ---
 
@@ -965,6 +966,14 @@ public class GameEvents : MonoBehaviour
     }
 }
 ```
+
+---
+
+## Tests
+
+`Assets/Tests/Framework/SimplePoolTests.cs` pins the pool: the creation of an
+instance, the reuse of an inactive one, the transform of a spawned object, the
+listing of the active ones and the clearing.
 
 ---
 

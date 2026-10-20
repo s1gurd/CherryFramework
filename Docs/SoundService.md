@@ -13,7 +13,8 @@
 9. [Common Issues and Solutions](#common-issues-and-solutions)
 10. [Best Practices](#best-practices)
 11. [Examples](#examples)
-12. [Summary](#summary)
+12. [Tests](#tests)
+13. [Summary](#summary)
 
 ---
 
@@ -1222,6 +1223,14 @@ public class BackgroundMusic : BehaviourBase
 // eventKey: "music_main" (looping, 2D)
 // eventKey: "music_battle" (looping, 2D)
 ```
+
+---
+
+## Tests
+
+`Assets/Tests/PlayMode/SoundServiceTests.cs` pins the service: the lookup of
+an event by its name, the handlers, the stop and the fade, and the bindings
+the service registers in the container.
 
 ---
 

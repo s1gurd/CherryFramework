@@ -13,7 +13,8 @@
 9. [Common Issues and Solutions](#common-issues-and-solutions)
 10. [Best Practices](#best-practices)
 11. [Examples](#examples)
-12. [Summary](#summary)
+12. [Tests](#tests)
+13. [Summary](#summary)
 
 ---
 
@@ -1607,6 +1608,18 @@ public class GameController : MonoBehaviour
     }
 }
 ```
+
+---
+
+## Tests
+
+`Assets/Tests/PlayMode/ViewServiceTests.cs` pins the navigation: the history,
+the active view, the modal block, the error paths and the loading screen.
+
+`Assets/Tests/PlayMode/UiElementLifecycleTests.cs` pins the elements: the
+initialisation of a presenter and the states of a widget.
+
+`Assets/Tests/PlayMode/PopulatorTests.cs` pins the dynamic lists.
 
 ---
 

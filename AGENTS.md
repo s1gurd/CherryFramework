@@ -9,12 +9,16 @@ object pooling.
 | Path | What it is |
 | --- | --- |
 | `Assets/CherryFramework/` | the framework, distributed to users as one folder |
-| `Assets/Tests/Framework/` | edit mode tests of the framework |
-| `Assets/Tests/PlayMode/` | play mode tests of the MonoBehaviour lifecycle |
+| `Assets/Tests/Framework/` | edit mode tests of the runtime |
+| `Assets/Tests/PlayMode/` | play mode tests of the MonoBehaviour lifecycle, the UI and the sound |
 | `Assets/Tests/Editor/` | tests of the dependency installer |
 | `Assets/Tests/Shared/` | the fakes both test assemblies use |
 | `Assets/Sample/` | the demo game, not part of the framework |
 | `Docs/` | one document per system, the contract the tests follow |
+
+Every system document in `Docs/` ends with a `Tests` section that names the
+test file pinning the behaviour of that system. When a change breaks a
+contract, the test that goes red is the one to read first.
 
 ## Running the tests
 

@@ -1258,6 +1258,13 @@ inside `Ticker` itself.
 
 ---
 
+## Tests
+
+`Assets/Tests/PlayMode/TickerBehaviourTests.cs` pins the dispatcher: a
+registered tickable is ticked, and an unregistered one is not.
+
+---
+
 ## Summary
 
 | Component         | Purpose                | Key Methods                  |
