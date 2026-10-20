@@ -269,6 +269,12 @@ namespace CherryFramework.DependencyManager
             {
                 DisposeInstance(dep.BindInstance);
             }
+
+            // Disposing the instances is not enough: the registrations have to go
+            // as well, otherwise the container keeps handing out disposed instances
+            // and refuses every new binding of the same type.
+            _dependencies.Clear();
+            _disposedInstances.Clear();
         }
         
         private void DisposeInstance(object instance)
