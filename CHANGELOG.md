@@ -5,6 +5,8 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Русская версия релиза 1.1: [changelog_1_1_rus.md](changelog_1_1_rus.md).
+
 ## [1.1] - 2026-10-20
 
 The dependency installer, an automated test suite for the runtime, the binding
