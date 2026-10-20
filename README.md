@@ -95,11 +95,29 @@ machine's locale, hence the comma.)
 
 ### Installing into your own project
 
-Copy `Assets/CherryFramework` (and `Assets/ThirdParty/Plugins/DOTween`, which
-it depends on) into your project. Then create one component deriving from
-`InstallerBehaviourBase`, add it to a GameObject, and fill its `[SerializeField]`
-references **in the Inspector** - an unassigned reference stays `null` and
-injection will fail:
+1. Copy `Assets/CherryFramework` into your project's `Assets` folder - with its
+   `.meta` files, they carry the references between the framework's assemblies.
+2. Open the project. Unity will report compile errors, because the framework's
+   dependencies are not installed yet - that is expected.
+3. The installer asks whether it should install them. Answer **Install**, or run
+   `Tools -> CherryFramework -> Install Dependencies` yourself.
+
+The installer is a separate assembly that does not reference the framework, so
+it compiles and runs even while the framework does not. It:
+
+- adds the packages listed under [Dependencies](#dependencies) to
+  `Packages/manifest.json` and resolves them,
+- downloads DOTween from
+  [dotween.demigiant.com](http://dotween.demigiant.com/download.php) into
+  `Assets/ThirdParty/Plugins/DOTween` and writes the `DOTween.Modules`
+  assembly definition the framework references,
+- unpacks the Sample archive, if you asked for the Sample.
+
+Re-running it is safe: anything already installed is left alone.
+
+Then create one component deriving from `InstallerBehaviourBase`, add it to a
+GameObject, and fill its `[SerializeField]` references **in the Inspector** - an
+unassigned reference stays `null` and injection will fail:
 
 ```csharp
 [DefaultExecutionOrder(-10000)]
@@ -139,10 +157,11 @@ assistant, and a few of them are deliberate.
 | **One registration file** | every service and its constructor signature sits in a single `InstallerBehaviourBase.Install()` |
 | **Uniform base classes** | four bases plus `[Inject]` and `[SaveGameData]` - a small, repeatable set of patterns |
 
-**The caveat, stated plainly:** there are no automated tests. A clean compile
-is as far as the framework itself takes you, and nothing will catch a
-regression later. An installer's `[SerializeField]` references are invisible to
-the compiler too - one left unassigned stays `null` and throws at runtime, not
+**The caveat, stated plainly:** the runtime systems have no automated tests. The
+dependency installer has them, the framework itself does not - a clean compile
+is as far as the framework takes you, and nothing will catch a regression in it
+later. An installer's `[SerializeField]` references are invisible to the
+compiler too - one left unassigned stays `null` and throws at runtime, not
 at build time.
 
 ---
@@ -710,8 +729,9 @@ public class MyComponent : BehaviourBase
 
 ### 1. Installation
 
-1. Copy CherryFramework into your Unity project's `Assets` folder
-2. Ensure [dependencies](#dependencies-included-in-project): DOTween, Newtonsoft.Json, etc, see Dependencies Section
+1. Copy `Assets/CherryFramework` into your Unity project's `Assets` folder
+2. Let the installer add the [dependencies](#dependencies) - it asks on the
+   first open, or run `Tools -> CherryFramework -> Install Dependencies`
 3. Add framework namespaces to your assembly definition files
 
 ### 2. Initial Setup
@@ -807,11 +827,20 @@ public class Player : BehaviourBase, IGameSaveData
 
 ---
 
-##### Dependencies (included in project)
+##### Dependencies
 
-- JSON - com.unity.nuget.newtonsoft-json
-- Code Generation - https://github.com/AnnulusGames/UnityCodeGen.git?path=/Assets/UnityCodeGen
-- UI animations and timers - https://dotween.demigiant.com/ or https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676
-- Editor Decoration - https://github.com/v0lt13/EditorAttributes.git
+The installer adds these to `Packages/manifest.json` for you:
+
+| Package | Why |
+| --- | --- |
+| `com.unity.nuget.newtonsoft-json` | JSON serialisation in the save system and the data models |
+| `com.unity.ugui` | `UnityEngine.UI` and TextMeshPro |
+| `com.v0lt.editor-attributes` | the `EditorAttributes` editor attributes |
+| `com.annulusgames.unity-codegen` | the data model code generator |
+| `com.unity.inputsystem` | only when the Sample is installed |
+
+DOTween is not a package. It is downloaded from
+[dotween.demigiant.com](http://dotween.demigiant.com/download.php) and
+unpacked into `Assets/ThirdParty/Plugins/DOTween`.
 
 If you want to integrate save game data to Steam or other cloud services, I advise to use https://github.com/richardelms/FileBasedPlayerPrefs - a direct replacement for Unity's PlayerPrefs, that stores user data in an ordinary JSON files
