@@ -23,18 +23,7 @@ namespace CherryFramework.SimplePool
             _pool.Values.SelectMany(x => x).Each(x =>
             {
                 if (!x.SafeIsUnityNull())
-                {
-                    // Destroy is not allowed in edit mode, but at runtime the
-                    // object has to survive until the end of the frame.
-                    if (Application.isPlaying)
-                    {
-                        Object.Destroy(x.gameObject);
-                    }
-                    else
-                    {
-                        Object.DestroyImmediate(x.gameObject);
-                    }
-                }
+                    Object.Destroy(x.gameObject);
             });
             _pool.Clear();
         }

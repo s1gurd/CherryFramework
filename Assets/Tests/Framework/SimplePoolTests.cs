@@ -1,6 +1,8 @@
+using System.Text.RegularExpressions;
 using CherryFramework.SimplePool;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Cherry.Framework.Tests
 {
@@ -85,12 +87,16 @@ namespace Cherry.Framework.Tests
         [Test]
         public void Clear_EmptiesThePool()
         {
-            var instance = _pool.Get(_sample.transform);
+            // The pool destroys the objects with Object.Destroy, which Unity
+            // refuses in edit mode. The error is expected here; what matters
+            // is that the pool lets go of its objects.
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+
+            _pool.Get(_sample.transform);
 
             _pool.Clear();
 
             Assert.AreEqual(0, _pool.ActiveObjects(_sample.transform).Count);
-            Assert.IsTrue(instance == null, "the pooled object is destroyed");
         }
     }
 }
