@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using UnityEditor;
 
 namespace CherryFramework.Installer
 {
@@ -110,12 +111,21 @@ namespace CherryFramework.Installer
 
             var task = DownloadAsync(url, destination);
 
-            if (!task.Wait(TimeSpan.FromMinutes(5)))
-            {
-                throw new TimeoutException("The DOTween download timed out");
-            }
+            EditorUtility.DisplayProgressBar("CherryFramework", "Downloading DOTween...", 0.5f);
 
-            task.GetAwaiter().GetResult();
+            try
+            {
+                if (!task.Wait(TimeSpan.FromMinutes(5)))
+                {
+                    throw new TimeoutException("The DOTween download timed out");
+                }
+
+                task.GetAwaiter().GetResult();
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
         }
 
         private static async Task DownloadAsync(string url, string destination)
@@ -124,13 +134,20 @@ namespace CherryFramework.Installer
             {
                 client.Timeout = TimeSpan.FromMinutes(5);
 
-                var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                // ConfigureAwait(false) keeps the continuation off the main
+                // thread. Without it the editor's synchronization context is
+                // captured, the continuation waits for the main thread, and
+                // the main thread waits for the continuation - a deadlock.
+                var response = await client
+                    .GetAsync(url, HttpCompletionOption.ResponseHeadersRead)
+                    .ConfigureAwait(false);
+
                 response.EnsureSuccessStatusCode();
 
-                using (var source = await response.Content.ReadAsStreamAsync())
+                using (var source = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                 using (var target = File.Create(destination))
                 {
-                    await source.CopyToAsync(target);
+                    await source.CopyToAsync(target).ConfigureAwait(false);
                 }
             }
         }
