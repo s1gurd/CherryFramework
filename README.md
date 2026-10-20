@@ -157,12 +157,11 @@ assistant, and a few of them are deliberate.
 | **One registration file** | every service and its constructor signature sits in a single `InstallerBehaviourBase.Install()` |
 | **Uniform base classes** | four bases plus `[Inject]` and `[SaveGameData]` - a small, repeatable set of patterns |
 
-**The caveat, stated plainly:** the runtime systems have no automated tests. The
-dependency installer has them, the framework itself does not - a clean compile
-is as far as the framework takes you, and nothing will catch a regression in it
-later. An installer's `[SerializeField]` references are invisible to the
-compiler too - one left unassigned stays `null` and throws at runtime, not
-at build time.
+**The caveat, stated plainly:** the runtime systems are covered by automated
+tests - run them with `Tools -> CherryFramework -> Run All Tests`, or from the
+command line, see `AGENTS.md`. What the tests cannot see is an installer's
+`[SerializeField]` references: they are invisible to the compiler, so one
+left unassigned stays `null` and throws at runtime, not at build time.
 
 ---
 
